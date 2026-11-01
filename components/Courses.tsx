@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Info, MessageCircle, X } from "lucide-react";
+import { Check, Info, MessageCircle, Pin, Star, X } from "lucide-react";
 import { courses, LINE_URL, type Course } from "@/lib/courses";
 
 export default function Courses() {
@@ -101,8 +101,15 @@ export default function Courses() {
             >
               <X className="h-4 w-4" />
             </button>
+            <span className="mb-2 inline-block rounded-full border border-brand-pink/30 bg-brand-pink/10 px-2.5 py-0.5 text-[11px] font-bold text-brand-pink">
+              {open.tagline}
+            </span>
             <h3 className="mb-1 pr-10 font-kanit text-xl font-bold text-white sm:text-2xl">{open.title}</h3>
-            <div className="mb-3 text-sm font-bold text-brand-gold">{open.price}</div>
+            <div className="mb-3 text-sm font-bold text-brand-gold">
+              {open.price}{" "}
+              {open.fullPrice && <span className="text-xs font-normal text-gray-500 line-through">{open.fullPrice}</span>}
+              {open.priceNote && <p className="mt-1 text-[11px] font-light text-gray-400">{open.priceNote}</p>}
+            </div>
             <p className="mb-4 text-xs font-light leading-relaxed text-gray-300">{open.summary}</p>
             <div className="mb-4 rounded-2xl border border-brand-border/80 bg-brand-black/80 p-4">
               <h4 className="mb-2.5 text-xs font-bold text-brand-roseGold">สิ่งที่จะได้เรียนรู้ในคอร์ส:</h4>
@@ -114,7 +121,27 @@ export default function Courses() {
                   </li>
                 ))}
               </ul>
+              {open.modules && (
+                <ul className="mt-4 space-y-2 border-t border-brand-border/60 pt-4 text-xs font-light text-gray-300">
+                  {open.modules.map((item) => (
+                    <li key={item} className="flex items-start">
+                      <Pin className="mr-2 mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-roseGold" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
+            {open.benefits && (
+              <ul className="mb-4 space-y-2 rounded-2xl border border-brand-gold/30 bg-brand-black/80 p-4 text-xs font-light text-gray-300">
+                {open.benefits.map((item) => (
+                  <li key={item} className="flex items-start">
+                    <Star className="mr-2 mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-gold" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="rounded-xl border border-brand-pink/20 bg-brand-pink/10 p-3 text-xs italic text-brand-roseGold">
               {open.suitable}
             </div>

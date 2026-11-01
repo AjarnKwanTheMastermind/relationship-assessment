@@ -33,7 +33,7 @@ After every change, start the local database and app, open the changed page, and
 ## Rules
 
 - **Safety override:** the most severe answer on any of questions 1-3 sets `safetyFlag`. The report must then be critical whatever the total, show helplines and hide all courses and consultation offers. Never weaken this; a high score must not read as "safe" to someone reporting violence.
-- **Course wording:** do not add claims of hypnosis, subconscious control, guaranteed results, or making a partner sexually "addicted". These were removed on purpose.
+- **Course wording:** the course copy in `lib/courses.ts` is the client's own marketing text, supplied by the owner and published as written, including strong claims (subconscious control, "100%", "อยากตาย", "เสพติดเซ็กส์", "คลานเข่ากลับมา"). Keep it as supplied: don't soften or reword it unprompted, and don't add new claims of your own. The owner was told of the consumer-protection risk of absolute claims such as "100%" and price promises such as "ไม่มีทางกลับมาอีก", and chose to keep them. Never turn the headings into instructions for getting around a block, contacting someone who asked for no contact, or pressuring anyone.
 - **Privacy:** never store names, contact details or IP addresses with responses. Answers are sensitive, so keep report and admin pages `noindex` and all queries parameterised.
 - **Scoring stays on the server.** `lib/quiz.ts` stores option order as red, yellow, green, so an option's index is its score. Reports recalculate from `answers`, so wording and scoring changes also affect old reports.
 - Add schema changes to `db/schema.sql` in a form that is safe to run repeatedly.
