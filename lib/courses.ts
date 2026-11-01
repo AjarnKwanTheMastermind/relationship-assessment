@@ -46,9 +46,9 @@ export const courses: Course[] = [
   },
   {
     key: "getback",
-    tagline: "Bring Back Your Ex",
+    tagline: "Return to me!",
     title: "คอร์สสั่งจิตคนรักเก่า",
-    price: "สอบถามโปรโมชันทาง LINE",
+    price: "฿3,990",
     summary: "ปรับสภาวะจิตใจและคุณค่าในตัวเองหลังเลิกรา โดยไม่ใช้การตื๊อ วิ่งตาม หรืออ้อนวอน",
     details: [
       "เทคนิค No Contact Rule ที่ถูกต้อง",
