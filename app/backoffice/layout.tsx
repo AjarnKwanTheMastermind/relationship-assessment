@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 const links = [
   { href: "/backoffice/report", label: "รายงาน" },
   { href: "/backoffice/charts", label: "แผนภูมิ" },
+  { href: "/backoffice/usage", label: "การใช้งาน" },
 ];
 
 export default function BackofficeLayout({ children }: { children: React.ReactNode }) {

@@ -14,6 +14,10 @@ npm run build
 
 Setup: copy `.env.example` to `.env`, then set `ADMIN_PASSWORD`. There is no automated test suite, so check changes by clicking through the app in a browser.
 
+## Working with the owner
+
+After every change, start the local database and app, open the changed page, and leave them running so the owner can review it. Only offer to commit or push after that. Never run the review against the production database.
+
 ## Where things are
 
 - `lib/quiz.ts`: questions, scoring, all result wording
@@ -22,7 +26,7 @@ Setup: copy `.env.example` to `.env`, then set `ADMIN_PASSWORD`. There is no aut
 - `db/schema.sql`: the one table, `responses`
 - `components/Quiz.tsx`, `components/Courses.tsx`: the only client components with state
 - `app/api/responses/route.ts`: saves a completed quiz
-- `app/backoffice/`: per-question report and pie charts; `lib/stats.ts` turns counts into percentages
+- `app/backoffice/`: per-question report, pie charts and date range usage report; `lib/stats.ts` turns counts into percentages and `lib/dateRange.ts` validates dates. Usage counts completed quizzes per Bangkok day; there are no user identities, and quiz starts aren't recorded
 - `middleware.ts`: Basic auth for `/admin` and `/backoffice` (username `admin`)
 - `docs/`: Word copies of the design specification and installation manual
 

@@ -84,6 +84,23 @@ export async function getAnswerCounts(): Promise<AnswerCount[]> {
   return rows;
 }
 
+export type DailyCount = { day: string; responses: number };
+
+// Completed quizzes per Bangkok calendar day, for dates from and to inclusive (YYYY-MM-DD).
+export async function getDailyResponseCounts(from: string, to: string): Promise<DailyCount[]> {
+  const { rows } = await getPool().query<DailyCount>(
+    `SELECT to_char(created_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS day,
+            count(*)::int AS responses
+     FROM responses
+     WHERE created_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Bangkok')
+       AND created_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Bangkok')
+     GROUP BY day
+     ORDER BY day`,
+    [from, to],
+  );
+  return rows;
+}
+
 export type RecentResponse = {
   id: string;
   percent_score: number;
