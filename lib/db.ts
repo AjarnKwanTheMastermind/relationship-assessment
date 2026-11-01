@@ -6,7 +6,16 @@ const globalForPool = globalThis as unknown as { pgPool?: Pool };
 
 function getPool(): Pool {
   if (!globalForPool.pgPool) {
-    globalForPool.pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+    globalForPool.pgPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      // Serverless hosts run many short-lived copies, so each keeps few connections.
+      max: 3,
+      idleTimeoutMillis: 10_000,
+      // Allows for a database that suspends when idle and has to wake up.
+      connectionTimeoutMillis: 15_000,
+    });
+    // Without a listener, a dropped idle connection would crash the process.
+    globalForPool.pgPool.on("error", (err) => console.error("Idle database connection error", err));
   }
   return globalForPool.pgPool;
 }

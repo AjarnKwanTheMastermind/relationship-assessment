@@ -34,6 +34,10 @@ Setup: copy `.env.example` to `.env`, then set `ADMIN_PASSWORD`. There is no aut
 - **Scoring stays on the server.** `lib/quiz.ts` stores option order as red, yellow, green, so an option's index is its score. Reports recalculate from `answers`, so wording and scoring changes also affect old reports.
 - Add schema changes to `db/schema.sql` in a form that is safe to run repeatedly.
 
+## Deployment
+
+Target is Netlify with Neon (see README); `netlify.toml` runs `db:migrate` on production builds. Use Neon's pooled connection string. The pool in `lib/db.ts` is small and needs its `error` listener, because Neon suspends after 5 minutes and drops idle connections.
+
 ## Pitfalls
 
 - Dev builds to `.next-dev` and production to `.next`. `next dev` crashes in the browser with `__webpack_require__.n is not a function` if it reuses production output, so keep them separate.

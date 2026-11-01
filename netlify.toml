@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Only live deploys touch the database schema. db:migrate is safe to repeat.
+[context.production]
+  command = "npm run db:migrate && npm run build"
