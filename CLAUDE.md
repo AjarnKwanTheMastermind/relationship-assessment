@@ -24,7 +24,7 @@ Setup: copy `.env.example` to `.env`, then set `ADMIN_PASSWORD`. There is no aut
 - `app/api/responses/route.ts`: saves a completed quiz
 - `app/backoffice/`: per-question report and pie charts; `lib/stats.ts` turns counts into percentages
 - `middleware.ts`: Basic auth for `/admin` and `/backoffice` (username `admin`)
-- `docs/`: Word copies of the design specification and installation manual; they can go out of date
+- `docs/`: Word copies of the design specification and installation manual
 
 ## Rules
 
@@ -36,7 +36,20 @@ Setup: copy `.env.example` to `.env`, then set `ADMIN_PASSWORD`. There is no aut
 
 ## Deployment
 
-Target is Netlify with Neon (see README); `netlify.toml` runs `db:migrate` on production builds. Use Neon's pooled connection string. The pool in `lib/db.ts` is small and needs its `error` listener, because Neon suspends after 5 minutes and drops idle connections.
+Production is live at https://strategic-relationship.netlify.app/ on Netlify's free plan, deployed from `main`. The database is Neon project `relationship-audit` (`lingering-band-55049917`, Siripod organization, Singapore, PostgreSQL 18.6).
+
+- `netlify.toml` runs `db:migrate` on production builds only.
+- `DATABASE_URL` must be Neon's pooled string. The pool in `lib/db.ts` is small and needs its `error` listener, because Neon suspends after 5 minutes and drops idle connections.
+- `ADMIN_PASSWORD` lives in Netlify's dashboard, with a Production value and a scope that includes Functions. Variable changes need a new deploy. A missing value returns 503; a wrong one returns 401.
+- Every push to `main` deploys and uses 15 of the free plan's 300 credits, so group changes. Put `[skip netlify]` in the message of commits that only change documents.
+
+**Treat any `.env` created by `neon init` as production.** It points `DATABASE_URL` at the live database, so running the app locally against it reads and writes real responses. Check where it points before testing, and use a local database (`npm run db:dev`) instead.
+
+To check the live site without saving data, use an invalid POST to `/api/responses` (expect 400) and an unknown UUID at `/results/` (404 proves the database connection works). Finishing the quiz saves a real row.
+
+## Documents
+
+The online documents are the source: [design specification](https://claude.ai/artifact/G2J9Ecv4tkGDhbzJv2EYxy) and [installation manual](https://claude.ai/artifact/Eq2Vq1PZrMiUnGU2JnaR4P). Update them first, then refresh the Word copies in `docs/`. The specification's export is large enough to be saved to a file. The manual's export comes back inline as base64, and retyping it corrupted the file twice, so its Word copy has been edited directly and differs slightly in formatting. Ignore Word's `~$` lock files in `docs/`.
 
 ## Pitfalls
 
@@ -45,3 +58,6 @@ Target is Netlify with Neon (see README); `netlify.toml` runs `db:migrate` on pr
 - `npm run db:dev` fails with "Postgres init script exited with code 1" in deeply nested Windows folders, because of the 260-character path limit. Use a short path such as `C:\dev\relationship-audit`.
 - Node 18.17 is the minimum, and the reason Next.js stays on version 14. Next 15 needs Node 18.18 and Next 16 needs Node 20.
 - Build-time font download: `next build` needs internet access for Google Fonts.
+- The Neon and Netlify CLIs need a newer Node than 18.17 (Neon needs 20.19 or newer). Use a temporary Node 22 if the machine is still on 18.
+- A running `next dev` can keep using its old database after `.env` changes. Restart it, and confirm which database a test actually reached.
+- `answers` links to questions by position only, so rewording or reordering a question changes what stored answers mean. Add a question version first if questions will change.
