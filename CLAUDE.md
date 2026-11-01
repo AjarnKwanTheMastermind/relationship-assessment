@@ -53,7 +53,7 @@ To check the live site without saving data, use an invalid POST to `/api/respons
 
 ## Documents
 
-The online documents are the source: [design specification](https://claude.ai/artifact/G2J9Ecv4tkGDhbzJv2EYxy) and [installation manual](https://claude.ai/artifact/Eq2Vq1PZrMiUnGU2JnaR4P). Update them first, then refresh the Word copies in `docs/`. The specification's export is large enough to be saved to a file. The manual's export comes back inline as base64, and retyping it corrupted the file twice, so its Word copy has been edited directly and differs slightly in formatting. Ignore Word's `~$` lock files in `docs/`.
+The online documents are the source: [design specification](https://claude.ai/artifact/G2J9Ecv4tkGDhbzJv2EYxy) and [installation manual](https://claude.ai/artifact/Eq2Vq1PZrMiUnGU2JnaR4P). Update them first, then refresh the Word copies in `docs/`. Both exports are now large enough (they contain drawings) to be saved to a file by the tool, which can be decoded exactly; never retype an inline base64 export, because that corrupted a file twice. The manual covers Netlify and Neon only, and its drawings are redrawn menu paths, not screenshots. Ignore Word's `~$` lock files in `docs/`.
 
 ## Pitfalls
 
