@@ -22,7 +22,8 @@ Setup: copy `.env.example` to `.env`, then set `ADMIN_PASSWORD`. There is no aut
 - `db/schema.sql`: the one table, `responses`
 - `components/Quiz.tsx`, `components/Courses.tsx`: the only client components with state
 - `app/api/responses/route.ts`: saves a completed quiz
-- `middleware.ts`: Basic auth for `/admin` (username `admin`)
+- `app/backoffice/`: per-question report and pie charts; `lib/stats.ts` turns counts into percentages
+- `middleware.ts`: Basic auth for `/admin` and `/backoffice` (username `admin`)
 - `docs/`: Word copies of the design specification and installation manual; they can go out of date
 
 ## Rules

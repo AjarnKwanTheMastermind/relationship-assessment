@@ -2,7 +2,7 @@
 
 A 10-question relationship assessment in Thai, built with Next.js and PostgreSQL.
 
-- `/` intro, `/quiz` questions, `/results/[id]` report, `/admin` statistics (password protected)
+- `/` intro, `/quiz` questions, `/results/[id]` report, `/admin` statistics, `/backoffice` per-question report and charts (both password protected)
 - Questions, scoring and result text: `lib/quiz.ts`
 - Courses and the LINE link: `lib/courses.ts`
 - Database table: `db/schema.sql`

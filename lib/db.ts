@@ -60,6 +60,21 @@ export async function getAdminStats(): Promise<AdminStats> {
   return rows[0];
 }
 
+export type AnswerCount = { question_no: number; option_index: number; picks: number };
+
+// One row per question and option picked. Expands the answers array by position.
+export async function getAnswerCounts(): Promise<AnswerCount[]> {
+  const { rows } = await getPool().query<AnswerCount>(
+    `SELECT a.question_no::int AS question_no,
+            a.option_index::int AS option_index,
+            count(*)::int AS picks
+     FROM responses r
+     CROSS JOIN LATERAL unnest(r.answers) WITH ORDINALITY AS a(option_index, question_no)
+     GROUP BY a.question_no, a.option_index`,
+  );
+  return rows;
+}
+
 export type RecentResponse = {
   id: string;
   percent_score: number;

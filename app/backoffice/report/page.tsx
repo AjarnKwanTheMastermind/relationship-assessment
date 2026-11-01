@@ -1,0 +1,56 @@
+import { getAnswerCounts } from "@/lib/db";
+import { buildQuestionStats, formatPercent, optionColors } from "@/lib/stats";
+
+export const dynamic = "force-dynamic";
+
+export default async function ReportPage() {
+  const stats = buildQuestionStats(await getAnswerCounts());
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="font-kanit text-2xl font-bold text-white">รายงานสถิติรายข้อ</h1>
+        <p className="text-xs font-light text-gray-400">จำนวนครั้งที่เลือกแต่ละคำตอบ และคิดเป็นร้อยละของผู้ตอบข้อนั้น</p>
+      </div>
+
+      {stats.map((q) => (
+        <section key={q.id} className="glass-card overflow-x-auto rounded-2xl p-4 sm:p-5">
+          <p className="mb-1 text-[11px] text-brand-roseGold">{q.categoryTitle}</p>
+          <h2 className="mb-3 text-sm font-medium leading-relaxed text-white">{q.question}</h2>
+          <table className="w-full text-left text-xs">
+            <thead className="text-gray-400">
+              <tr>
+                <th className="p-2 font-semibold">คำตอบ</th>
+                <th className="w-20 p-2 text-right font-semibold">จำนวน</th>
+                <th className="w-20 p-2 text-right font-semibold">ร้อยละ</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-200">
+              {q.options.map((o) => (
+                <tr key={o.index} className="border-t border-brand-border/60">
+                  <td className="p-2">
+                    <span
+                      aria-hidden
+                      className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: optionColors[o.index] }}
+                    />
+                    {o.text}
+                  </td>
+                  <td className="p-2 text-right tabular-nums">{o.picks.toLocaleString("en-US")}</td>
+                  <td className="p-2 text-right tabular-nums">{formatPercent(o.percent)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-brand-border font-semibold text-white">
+                <td className="p-2">รวม</td>
+                <td className="p-2 text-right tabular-nums">{q.total.toLocaleString("en-US")}</td>
+                <td className="p-2 text-right tabular-nums">{q.total === 0 ? "–" : "100%"}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+      ))}
+    </div>
+  );
+}

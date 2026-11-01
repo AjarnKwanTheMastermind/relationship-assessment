@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// HTTP Basic auth for /admin. With no ADMIN_PASSWORD set, nobody can get in.
+// HTTP Basic auth for /admin and /backoffice. With no ADMIN_PASSWORD set, nobody can get in.
 export function middleware(req: NextRequest) {
   const password = process.env.ADMIN_PASSWORD;
   const header = req.headers.get("authorization");
@@ -16,4 +16,4 @@ export function middleware(req: NextRequest) {
   });
 }
 
-export const config = { matcher: "/admin/:path*" };
+export const config = { matcher: ["/admin/:path*", "/backoffice/:path*"] };
