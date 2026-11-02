@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Kanit, Prompt } from "next/font/google";
 import { Crown, MessageCircle } from "lucide-react";
-import { LINE_URL } from "@/lib/courses";
+import { lineLabel } from "@/lib/lineLink";
+import { getSettings } from "@/lib/settings";
 import "./globals.css";
 
 const prompt = Prompt({
@@ -20,7 +21,13 @@ export const metadata: Metadata = {
   description: "วัดระดับสุขภาพความสัมพันธ์ของคุณ 10 ข้อ 3 มิติ พร้อมรายงานผลทันที",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Pages built from the saved settings are rebuilt at least this often (seconds). Saving a
+// setting in the backoffice clears them immediately.
+export const revalidate = 300;
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const { lineUrl } = await getSettings();
+
   return (
     <html lang="th" className={`${prompt.variable} ${kanit.variable}`}>
       <body className="relative flex min-h-screen flex-col justify-between font-prompt selection:bg-brand-pink selection:text-white">
@@ -42,13 +49,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
             <a
-              href={LINE_URL}
+              href={lineUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="hidden items-center space-x-1.5 rounded-full border border-brand-pink/50 bg-brand-pink/10 px-3.5 py-1.5 text-xs text-brand-roseGold transition-all hover:bg-brand-pink/20 sm:inline-flex"
             >
               <MessageCircle className="h-4 w-4 text-brand-pink" />
-              <span>LINE: @aj.kwan</span>
+              <span>{lineLabel(lineUrl)}</span>
             </a>
           </div>
         </header>

@@ -21,7 +21,12 @@ After every change, start the local database and app, open the changed page, and
 ## Where things are
 
 - `lib/quiz.ts`: questions, scoring, all result wording
-- `lib/courses.ts`: course data and the LINE link
+- `lib/courses.ts`: course data
+- `lib/lineLink.ts`: the default LINE link, its validation (https and line.me or lin.ee only) and the account name derived from it (`LINE: @aj.kwan`, or `LINE Official` for short links)
+- `lib/settings.ts`: reads the `settings` table (key and value, one row per setting; no row means the built-in default). `getSettings()` is cached and never throws; `readSettingsNow()` is uncached for the settings page
+- `app/backoffice/settings/`: administrators edit the LINE link; saving clears the `settings` cache tag and `revalidatePath('/', 'layout')`
+- `lib/adminAuth.ts`: the admin login check, used by the middleware and again inside server actions
+- `lib/otp.ts`, `lib/mailer.ts`, `app/backoffice/settings/verify/`: the one-time password (OTP) that approves every settings change. Saving or resetting only creates a pending change in the `otp_challenges` table and emails a 6-digit code to `ADMIN_EMAIL` through Resend; the change is applied only when the right code is entered
 - `lib/db.ts`: connection pool and every SQL query
 - `db/schema.sql`: the one table, `responses`
 - `components/Quiz.tsx`, `components/Courses.tsx`: the only client components with state
@@ -37,6 +42,8 @@ After every change, start the local database and app, open the changed page, and
 - **Privacy:** never store names, contact details or IP addresses with responses. Answers are sensitive, so keep report and admin pages `noindex` and all queries parameterised.
 - **Scoring stays on the server.** `lib/quiz.ts` stores option order as red, yellow, green, so an option's index is its score. Reports recalculate from `answers`, so wording and scoring changes also affect old reports.
 - Add schema changes to `db/schema.sql` in a form that is safe to run repeatedly.
+- **Settings:** public pages must read settings with the cached `getSettings()`, never from the database directly. Values are validated when saved and again when read, because the LINE link becomes an `href` on every page. Keep `/` and `/quiz` static: the root layout's `revalidate` and the cache tag are what update them. Any server action that changes data must call `hasAdminAccess` itself.
+- **OTP:** the administrator's email lives only in the `ADMIN_EMAIL` environment variable and must never become editable in the app, or someone with the backoffice password could redirect the codes. Codes are random, stored only as a keyed hash, valid 10 minutes, single use, limited to 5 tries and 3 requests per 15 minutes, and bound to the exact change. A new request retires older ones. Sending fails closed: with no `ADMIN_EMAIL`, or no `RESEND_API_KEY` and `EMAIL_FROM` outside development, saving is refused. Never log the code or show it outside development.
 
 ## Deployment
 
@@ -45,6 +52,7 @@ Production is live at https://strategic-relationship.netlify.app/ on Netlify's f
 - `netlify.toml` runs `db:migrate` on production builds only.
 - `DATABASE_URL` must be Neon's pooled string. The pool in `lib/db.ts` is small and needs its `error` listener, because Neon suspends after 5 minutes and drops idle connections.
 - `ADMIN_PASSWORD` lives in Netlify's dashboard, with a Production value and a scope that includes Functions. Variable changes need a new deploy. A missing value returns 503; a wrong one returns 401.
+- Editing settings in production also needs `ADMIN_EMAIL` (who receives the OTP), `RESEND_API_KEY` and `EMAIL_FROM` in Netlify, with Production values and a scope that includes Functions. Until they are set the settings page shows what is missing and refuses to save; the rest of the site is unaffected. `db:migrate` creates the `settings` and `otp_challenges` tables on deploy.
 - Every push to `main` deploys and uses 15 of the free plan's 300 credits, so group changes. Put `[skip netlify]` in the message of commits that only change documents.
 
 **Treat any `.env` created by `neon init` as production.** It points `DATABASE_URL` at the live database, so running the app locally against it reads and writes real responses. Check where it points before testing, and use a local database (`npm run db:dev`) instead.
@@ -63,5 +71,8 @@ The online documents are the source: [design specification](https://claude.ai/ar
 - Node 18.17 is the minimum, and the reason Next.js stays on version 14. Next 15 needs Node 18.18 and Next 16 needs Node 20.
 - Build-time font download: `next build` needs internet access for Google Fonts.
 - The Neon and Netlify CLIs need a newer Node than 18.17 (Neon needs 20.19 or newer). Use a temporary Node 22 if the machine is still on 18.
+- Testing a server action in a browser: don't open the page as `http://admin:password@localhost:3000/...`. The action's request then fails with "Request cannot be constructed from a URL that includes credentials". Open that URL once to cache the login, then open the plain URL.
+- In development no email is sent: the OTP is printed in the server log and shown on the verification page (only when `NODE_ENV` is `development` and no email service is configured). To test real sending without an account, run a production build with `RESEND_API_KEY`, `EMAIL_FROM` and `RESEND_API_URL=http://localhost:<port>/emails` pointing at a small local server that records the request.
+- Editing the database directly bypasses revalidation, so the prebuilt home page can keep an older LINE link for up to 5 minutes. Change settings through the app, or assert on the stored value in tests.
 - A running `next dev` can keep using its old database after `.env` changes. Restart it, and confirm which database a test actually reached.
 - `answers` links to questions by position only, so rewording or reordering a question changes what stored answers mean. Add a question version first if questions will change.

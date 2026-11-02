@@ -1,5 +1,3 @@
-export const LINE_URL = "https://line.me/ti/p/~@aj.kwan";
-
 export type Course = {
   key: string;
   tagline: string;

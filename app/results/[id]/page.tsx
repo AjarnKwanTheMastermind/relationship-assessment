@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Compass, Lightbulb, LifeBuoy, Phone, RotateCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import Courses from "@/components/Courses";
 import { getAnswers } from "@/lib/db";
+import { getSettings } from "@/lib/settings";
 import { scoreAnswers, type Band, type CategoryStatus } from "@/lib/quiz";
 
 export const dynamic = "force-dynamic";
@@ -149,7 +150,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
         </div>
       </section>
 
-      {!result.safetyFlag && <Courses />}
+      {!result.safetyFlag && <Courses lineUrl={(await getSettings()).lineUrl} />}
 
       <div className="text-center">
         <Link

@@ -2,7 +2,7 @@
 
 A 10-question relationship assessment in Thai, built with Next.js and PostgreSQL.
 
-- `/` intro, `/quiz` questions, `/results/[id]` report, `/admin` statistics, `/backoffice` per-question report, charts and date range usage report (both password protected)
+- `/` intro, `/quiz` questions, `/results/[id]` report, `/admin` statistics, `/backoffice` per-question report, charts, date range usage report and settings such as the LINE link (both password protected)
 - Questions, scoring and result text: `lib/quiz.ts`
 - Courses and the LINE link: `lib/courses.ts`
 - Database table: `db/schema.sql`
@@ -42,7 +42,7 @@ Free plans can run the app, but check their limits and terms first, especially f
 
 1. **Create the database.** Sign up at [neon.com](https://neon.com) and create a project in the region closest to your visitors. Copy the **pooled** connection string, which has `-pooler` in its host name.
 2. **Create the site.** Sign up at [netlify.com](https://www.netlify.com), choose **Add new project**, then **Import an existing project**, and select this GitHub repository. Keep the build settings from `netlify.toml`.
-3. **Set environment variables.** Before the first deploy, add `DATABASE_URL` (the Neon string) and `ADMIN_PASSWORD` (a long, unique password).
+3. **Set environment variables.** Before the first deploy, add `DATABASE_URL` (the Neon string) and `ADMIN_PASSWORD` (a long, unique password). To edit settings in the backoffice you also need `ADMIN_EMAIL` (receives the one-time password), `RESEND_API_KEY` and `EMAIL_FROM` from a [Resend](https://resend.com) account. Without them the site works, but saving settings is refused.
 4. **Deploy.** The production build creates the table, so no separate database step is needed.
 5. **Check it.** Finish the quiz, then open `/backoffice` and confirm the response is counted.
 
