@@ -1,8 +1,7 @@
+import Link from "next/link";
 import { DEFAULT_LINE_URL, MAX_LINE_URL_LENGTH, lineLabel, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
-import { adminEmail, deliveryMode, maskEmail } from "@/lib/mailer";
-import { OTP_TTL_MINUTES, requestErrors } from "@/lib/otp";
 import { readSettingsNow } from "@/lib/settings";
-import { requestChange } from "./actions";
+import { saveSettings } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +18,15 @@ export default async function SettingsPage({
 }: {
   searchParams: { saved?: string; error?: string; value?: string };
 }) {
-  const { settings, updatedAt } = await readSettingsNow();
+  const { settings, updatedAt, courseUpdatedAt } = await readSettingsNow();
 
-  const errorMessages: Record<string, string> = { ...lineUrlErrors, ...requestErrors };
+  const errorMessages: Record<string, string> = {
+    ...lineUrlErrors,
+    password: "รหัสผ่านผู้ดูแลไม่ถูกต้อง การตั้งค่ายังไม่เปลี่ยน",
+  };
   const errorKey = searchParams.error ?? "";
   const error = Object.prototype.hasOwnProperty.call(errorMessages, errorKey) ? errorMessages[errorKey] : null;
 
-  const email = adminEmail();
-  const mode = deliveryMode();
-  const emailProblem = !email ? requestErrors.noemail : mode === "unavailable" ? requestErrors.noprovider : null;
   const saved = Object.prototype.hasOwnProperty.call(savedMessages, searchParams.saved ?? "")
     ? savedMessages[searchParams.saved as string]
     : null;
@@ -53,25 +52,7 @@ export default async function SettingsPage({
         </p>
       )}
 
-      <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">
-        <h2 className="mb-1 text-sm font-medium text-white">ยืนยันด้วยรหัส OTP</h2>
-        {emailProblem ? (
-          <p role="alert" className="text-red-300">
-            {emailProblem}
-          </p>
-        ) : (
-          <p>
-            เมื่อกดบันทึกหรือคืนค่าเริ่มต้น ระบบจะส่งรหัส OTP 6 หลักไปที่อีเมลผู้ดูแล ({maskEmail(email as string)}) การเปลี่ยนแปลงจะมีผลเมื่อกรอก
-            รหัสถูกต้องภายใน {OTP_TTL_MINUTES} นาที
-            {mode === "console" && " (โหมดพัฒนา: ไม่ส่งอีเมลจริง รหัสจะแสดงในหน้ายืนยัน)"}
-          </p>
-        )}
-        <p className="mt-1 text-[11px] font-light text-gray-500">
-          อีเมลผู้ดูแลตั้งได้เฉพาะในตัวแปร ADMIN_EMAIL ของระบบ ไม่ได้แก้ไขจากหน้านี้ เพื่อไม่ให้ผู้ที่ได้รหัสผ่าน backoffice ไปเปลี่ยนที่อยู่รับรหัสได้
-        </p>
-      </section>
-
-      <form action={requestChange} className="glass-card space-y-4 rounded-2xl p-4 sm:p-5">
+      <form action={saveSettings} className="glass-card space-y-4 rounded-2xl p-4 sm:p-5">
         <div>
           <label htmlFor="lineUrl" className="mb-1 block text-sm font-medium text-white">
             ลิงก์ LINE Official Account
@@ -95,6 +76,24 @@ export default async function SettingsPage({
           </p>
         </div>
 
+        <div>
+          <label htmlFor="password" className="mb-1 block text-sm font-medium text-white">
+            รหัสผ่านผู้ดูแล
+          </label>
+          <p className="mb-2 text-xs font-light text-gray-400">กรอกรหัสผ่านที่ใช้เข้า backoffice อีกครั้ง เพื่อยืนยันการเปลี่ยนแปลง</p>
+          <input
+            // A new key after every submit remounts the field, so the password never stays in the box.
+            key={`${searchParams.saved ?? ""}:${searchParams.error ?? ""}:${Date.now()}`}
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            aria-invalid={searchParams.error === "password" ? true : undefined}
+            className={inputClass}
+          />
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <button type="submit" className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white">
             บันทึก
@@ -110,6 +109,31 @@ export default async function SettingsPage({
           </button>
         </div>
       </form>
+
+      <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">
+        <h2 className="mb-1 text-sm font-medium text-white">ข้อมูลคอร์ส</h2>
+        <p className="mb-3 font-light text-gray-400">แก้ไขชื่อ ราคา และรายละเอียดของแต่ละคอร์สที่แสดงในหน้าผลลัพธ์</p>
+        <ul className="space-y-2">
+          {settings.courses.map((course) => (
+            <li key={course.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-border px-3 py-2">
+              <span>
+                <span className="text-white">{course.title}</span>{" "}
+                <span className="text-gray-500">
+                  {courseUpdatedAt[course.key]
+                    ? `· บันทึกล่าสุด ${courseUpdatedAt[course.key]?.toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}`
+                    : "· ยังไม่มีในฐานข้อมูล (ใช้ข้อมูลเริ่มต้น)"}
+                </span>
+              </span>
+              <Link
+                href={`/backoffice/settings/courses/${course.key}`}
+                className="rounded-xl border border-brand-border px-4 py-1 text-gray-300 hover:border-brand-pink hover:text-white"
+              >
+                แก้ไข
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">
         <h2 className="mb-2 text-sm font-medium text-white">ค่าที่ใช้อยู่ตอนนี้</h2>

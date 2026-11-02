@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Kanit, Prompt } from "next/font/google";
 import { Crown, MessageCircle } from "lucide-react";
 import { lineLabel } from "@/lib/lineLink";
@@ -35,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
         <header className="sticky top-0 z-10 border-b border-brand-border bg-brand-black/90 backdrop-blur-md">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
-            <div className="flex items-center space-x-3">
+            <Link href="/" aria-label="กลับไปหน้าแรก" className="flex items-center space-x-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-brand-pink bg-brand-card shadow-[0_0_12px_rgba(255,42,133,0.5)]">
                 <Crown className="h-5 w-5 text-brand-pink" />
               </div>
@@ -47,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   ความเข้าใจมนุษย์ × กลยุทธ์ × ประสบการณ์จริง
                 </p>
               </div>
-            </div>
+            </Link>
             <a
               href={lineUrl}
               target="_blank"

@@ -1,6 +1,6 @@
 export type Course = {
   key: string;
-  tagline: string;
+  titleEn: string;
   title: string;
   price: string;
   fullPrice?: string;
@@ -9,13 +9,15 @@ export type Course = {
   details: string[];
   modules?: string[];
   benefits?: string[];
-  suitable: string;
+  suitable?: string;
 };
 
+// Built-in course information. The administrator can override each course in the backoffice;
+// a course with no saved override shows what is written here.
 export const courses: Course[] = [
   {
     key: "conquer",
-    tagline: "Addicted to me!",
+    titleEn: "Addicted to me!",
     title: "คอร์สสั่งจิตพิชิตรัก",
     price: "฿3,490",
     fullPrice: "฿5,990",
@@ -42,7 +44,7 @@ export const courses: Course[] = [
   },
   {
     key: "bedfire",
-    tagline: "You can’t resist!",
+    titleEn: "You can’t resist!",
     title: "คอร์สปลุกไฟบนเตียง",
     price: "฿3,490",
     fullPrice: "฿5,990",
@@ -66,7 +68,7 @@ export const courses: Course[] = [
   },
   {
     key: "getback",
-    tagline: "Return to me!",
+    titleEn: "Return to me!",
     title: "คอร์สสั่งจิตคนรักเก่า",
     price: "฿3,990",
     fullPrice: "฿5,990",

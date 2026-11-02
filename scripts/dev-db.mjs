@@ -11,6 +11,8 @@ const server = new EmbeddedPostgres({
   password: "postgres",
   port: 5432,
   persistent: true,
+  // The Windows default is WIN1252, which can't store Thai text such as course information.
+  initdbFlags: ["--encoding=UTF8", "--locale=C"],
 });
 
 if (isNew) await server.initialise();

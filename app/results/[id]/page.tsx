@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Compass, Lightbulb, LifeBuoy, Phone, RotateCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import Courses from "@/components/Courses";
 import { getAnswers } from "@/lib/db";
+import { helplines } from "@/lib/helplines";
 import { getSettings } from "@/lib/settings";
 import { scoreAnswers, type Band, type CategoryStatus } from "@/lib/quiz";
 
@@ -34,12 +35,6 @@ const statusStyles: Record<CategoryStatus, { label: string; badge: string; card:
 
 const categoryIcons = { 1: ShieldCheck, 2: Compass, 3: SlidersHorizontal };
 
-const helplines = [
-  { number: "1300", name: "ศูนย์ช่วยเหลือสังคม (พม.) ตลอด 24 ชั่วโมง" },
-  { number: "1323", name: "สายด่วนสุขภาพจิต กรมสุขภาพจิต" },
-  { number: "191", name: "แจ้งเหตุฉุกเฉิน ตำรวจ" },
-];
-
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   if (!UUID.test(params.id)) notFound();
   const answers = await getAnswers(params.id);
@@ -47,6 +42,8 @@ export default async function ResultsPage({ params }: { params: { id: string } }
 
   const result = scoreAnswers(answers);
   const band = bandStyles[result.band];
+  // Courses are never shown to someone flagged for safety, so their settings aren't even read.
+  const settings = result.safetyFlag ? null : await getSettings();
 
   return (
     <div className="space-y-6">
@@ -150,7 +147,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
         </div>
       </section>
 
-      {!result.safetyFlag && <Courses lineUrl={(await getSettings()).lineUrl} />}
+      {settings && <Courses lineUrl={settings.lineUrl} courses={settings.courses} />}
 
       <div className="text-center">
         <Link
