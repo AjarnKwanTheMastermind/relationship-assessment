@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { DEFAULT_LINE_URL, MAX_LINE_URL_LENGTH, lineLabel, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
+import MailNotice from "@/components/MailNotice";
+import { adminEmail, deliveryMode, maskEmail } from "@/lib/notify";
+import { otpErrors } from "@/lib/otpErrors";
 import { readSettingsNow } from "@/lib/settings";
+import { twoFactorOn } from "@/lib/twoFactor";
 import { saveSettings } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +20,17 @@ const savedMessages: Record<string, string> = {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { saved?: string; error?: string; value?: string };
+  searchParams: { saved?: string; error?: string; value?: string; mail?: string };
 }) {
   const { settings, updatedAt, courseUpdatedAt } = await readSettingsNow();
+  const twoFactor = twoFactorOn();
+  const email = adminEmail();
+  const canSendCode = Boolean(email) && deliveryMode() !== "unavailable";
 
   const errorMessages: Record<string, string> = {
     ...lineUrlErrors,
+    ...otpErrors,
+    invalid: "คำขอไม่ถูกต้อง การตั้งค่ายังไม่เปลี่ยน",
     password: "รหัสผ่านผู้ดูแลไม่ถูกต้อง การตั้งค่ายังไม่เปลี่ยน",
   };
   const errorKey = searchParams.error ?? "";
@@ -46,6 +55,7 @@ export default async function SettingsPage({
           {saved}
         </p>
       )}
+      {saved && <MailNotice status={searchParams.mail} />}
       {error && (
         <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
           {error}
@@ -76,6 +86,11 @@ export default async function SettingsPage({
           </p>
         </div>
 
+        {twoFactor ? (
+          <p className="rounded-xl border border-brand-border px-3 py-2 text-xs font-light text-gray-300">
+            เปิดใช้การยืนยันตัวตนสองขั้นตอน (2FA): หลังกดบันทึก ระบบจะส่งรหัส OTP ไปที่อีเมลผู้ดูแล และการตั้งค่าจะเปลี่ยนเมื่อกรอกรหัสถูกต้อง
+          </p>
+        ) : (
         <div>
           <label htmlFor="password" className="mb-1 block text-sm font-medium text-white">
             รหัสผ่านผู้ดูแล
@@ -93,6 +108,7 @@ export default async function SettingsPage({
             className={inputClass}
           />
         </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <button type="submit" className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white">
@@ -133,6 +149,26 @@ export default async function SettingsPage({
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">
+        <h2 className="mb-1 text-sm font-medium text-white">
+          การยืนยันตัวตนสองขั้นตอน (2FA){" "}
+          <span className={twoFactor ? "text-emerald-300" : "text-gray-400"}>{twoFactor ? "· เปิดใช้งาน" : "· ปิดใช้งาน"}</span>
+        </h2>
+        <p className="font-light text-gray-400">
+          {twoFactor
+            ? `ทุกครั้งที่บันทึก ระบบจะส่งรหัส OTP 6 หลักไปที่อีเมลผู้ดูแล${email ? ` (${maskEmail(email)})` : ""} และการตั้งค่าจะเปลี่ยนเมื่อกรอกรหัสถูกต้องเท่านั้น`
+            : "ทุกครั้งที่บันทึก ต้องกรอกรหัสผ่านผู้ดูแลอีกครั้ง"}
+        </p>
+        <p className="mt-2 font-light text-gray-500">
+          เปิดหรือปิดได้ที่ตัวแปร TWO_FACTOR_AUTHEN ใน Netlify (ตั้งค่าเป็น on เพื่อเปิด หรือลบตัวแปรเพื่อปิด) แล้ว Deploy ใหม่ ไม่สามารถเปลี่ยนจากหน้านี้ได้
+        </p>
+        {twoFactor && !canSendCode && (
+          <p role="alert" className="mt-3 rounded-xl border border-red-500/40 bg-red-950/20 p-3 text-red-300">
+            เปิด 2FA อยู่ แต่ยังตั้งค่า ADMIN_EMAIL, RESEND_API_KEY หรือ EMAIL_FROM ไม่ครบ จึงบันทึกการตั้งค่าไม่ได้จนกว่าจะตั้งค่าครบ หรือลบตัวแปร TWO_FACTOR_AUTHEN แล้ว Deploy ใหม่
+          </p>
+        )}
       </section>
 
       <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import MailNotice from "@/components/MailNotice";
 import CourseForm from "@/components/CourseForm";
 import { courseToValues } from "@/lib/courseEdit";
 import { courses } from "@/lib/courses";
 import { readSettingsNow } from "@/lib/settings";
+import { twoFactorOn } from "@/lib/twoFactor";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,7 @@ export default async function EditCoursePage({
   searchParams,
 }: {
   params: { key: string };
-  searchParams: { saved?: string };
+  searchParams: { saved?: string; mail?: string };
 }) {
   if (!courses.some((course) => course.key === params.key)) notFound();
 
@@ -51,7 +53,14 @@ export default async function EditCoursePage({
         </p>
       )}
 
-      <CourseForm key={`${params.key}:${updatedAt?.getTime() ?? 0}`} courseKey={params.key} initial={courseToValues(course)} />
+      {saved && <MailNotice status={searchParams.mail} />}
+
+      <CourseForm
+        key={`${params.key}:${updatedAt?.getTime() ?? 0}`}
+        courseKey={params.key}
+        initial={courseToValues(course)}
+        twoFactor={twoFactorOn()}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { fieldRules, type CourseField, type CourseValues } from "@/lib/courseEdit";
+import { otpErrors } from "@/lib/otpErrors";
 import { saveCourse, type CourseFormState } from "@/app/backoffice/settings/courses/actions";
 
 const inputClass =
@@ -22,7 +23,7 @@ const fields: FieldInfo[] = [
   { field: "suitable", label: "เหมาะกับใคร (suitable)", hint: "เว้นว่างได้", rows: 4 },
 ];
 
-export default function CourseForm({ courseKey, initial }: { courseKey: string; initial: CourseValues }) {
+export default function CourseForm({ courseKey, initial, twoFactor }: { courseKey: string; initial: CourseValues; twoFactor: boolean }) {
   const [state, setState] = useState<CourseFormState>({ errors: {}, values: initial });
   // A new key after every submit remounts the fields, so the password never stays in the box.
   const [round, setRound] = useState(0);
@@ -62,6 +63,11 @@ export default function CourseForm({ courseKey, initial }: { courseKey: string; 
           ไม่พบคอร์สนี้
         </p>
       )}
+      {message && message !== "password" && message !== "form" && (
+        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+          {otpErrors[message]}
+        </p>
+      )}
       {Object.keys(errors).length > 0 && (
         <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
           บันทึกไม่ได้ กรุณาแก้ไขช่องที่มีข้อความสีแดง
@@ -94,6 +100,11 @@ export default function CourseForm({ courseKey, initial }: { courseKey: string; 
         );
       })}
 
+      {twoFactor ? (
+        <p className="rounded-xl border border-brand-border px-3 py-2 text-xs font-light text-gray-300">
+          เปิดใช้การยืนยันตัวตนสองขั้นตอน (2FA): หลังกดบันทึก ระบบจะส่งรหัส OTP ไปที่อีเมลผู้ดูแล และการตั้งค่าจะเปลี่ยนเมื่อกรอกรหัสถูกต้อง
+        </p>
+      ) : (
       <div>
         <label htmlFor="course-password" className="mb-1 block text-sm font-medium text-white">
           รหัสผ่านผู้ดูแล
@@ -115,6 +126,7 @@ export default function CourseForm({ courseKey, initial }: { courseKey: string; 
           </p>
         )}
       </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" value="save" disabled={pending || !ready} className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white disabled:opacity-60">

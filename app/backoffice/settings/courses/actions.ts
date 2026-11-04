@@ -1,19 +1,19 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasAdminAccess } from "@/lib/adminAuth";
-import { passwordMatches } from "@/lib/confirmPassword";
+import { submitChange } from "@/lib/changeFlow";
 import { courseFields, courseToValues, validateCourse, type CourseErrors, type CourseField, type CourseValues } from "@/lib/courseEdit";
 import { courses } from "@/lib/courses";
-import { upsertSetting } from "@/lib/db";
-import { SETTINGS_TAG, courseKey } from "@/lib/settings";
+import type { OtpError } from "@/lib/otpErrors";
+import type { PendingChange } from "@/lib/pending";
 
 export type CourseFormState = {
   errors: CourseErrors;
-  // "password" is the administrator password being wrong; "form" is a problem with the request itself.
-  message?: "password" | "form";
+  // "password" is the administrator password being wrong; "form" is a problem with the request itself;
+  // the others are reasons a one-time password could not be sent while TWO_FACTOR_AUTHEN is on.
+  message?: "password" | "form" | OtpError;
   values: CourseValues;
 };
 
@@ -22,11 +22,6 @@ function assertAdmin() {
   if (!hasAdminAccess(headers().get("authorization"), process.env.ADMIN_PASSWORD)) {
     throw new Error("Unauthorized");
   }
-}
-
-function publish() {
-  revalidateTag(SETTINGS_TAG);
-  revalidatePath("/", "layout");
 }
 
 function readValues(formData: FormData): CourseValues {
@@ -38,7 +33,7 @@ function readValues(formData: FormData): CourseValues {
 }
 
 // Saves or resets one course. A mistake is returned so the form keeps everything that was typed;
-// success redirects back to the course page.
+// success redirects back to the course page (or to the one-time password page when TWO_FACTOR_AUTHEN is on).
 export async function saveCourse(formData: FormData): Promise<CourseFormState | void> {
   assertAdmin();
 
@@ -46,26 +41,14 @@ export async function saveCourse(formData: FormData): Promise<CourseFormState | 
   const values = readValues(formData);
   if (!courses.some((course) => course.key === key)) return { errors: {}, message: "form", values };
 
-  // Every change needs the administrator password typed again, as for the LINE link.
-  if (!passwordMatches(String(formData.get("password") ?? ""), process.env.ADMIN_PASSWORD)) {
-    // A short pause makes guessing the password through this form slow.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return { errors: {}, message: "password", values };
+  let change: PendingChange = { type: "course", key, values: null };
+  if (formData.get("intent") !== "reset") {
+    const result = validateCourse(values);
+    if (!result.ok) return { errors: result.errors, values };
+    change = { type: "course", key, values: courseToValues(result.value) };
   }
 
-  const back = `/backoffice/settings/courses/${key}`;
-  if (formData.get("intent") === "reset") {
-    // The built-in text is written back into the row, so every course always has one.
-    const { key: _key, ...builtIn } = courses.find((course) => course.key === key) as (typeof courses)[number];
-    await upsertSetting(courseKey(key), JSON.stringify(courseToValues(builtIn)));
-    publish();
-    redirect(`${back}?saved=reset`);
-  }
-
-  const result = validateCourse(values);
-  if (!result.ok) return { errors: result.errors, values };
-
-  await upsertSetting(courseKey(key), JSON.stringify(courseToValues(result.value)));
-  publish();
-  redirect(`${back}?saved=1`);
+  const submitted = await submitChange(change, formData);
+  if (!submitted.ok) return { errors: {}, message: submitted.error, values };
+  redirect(submitted.to);
 }

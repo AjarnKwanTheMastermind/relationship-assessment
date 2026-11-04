@@ -1,13 +1,14 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasAdminAccess } from "@/lib/adminAuth";
-import { passwordMatches } from "@/lib/confirmPassword";
-import { deleteSetting, upsertSetting } from "@/lib/db";
+import { applyChange } from "@/lib/applyChange";
+import { VERIFY_PATH, devParam, issueChallenge, submitChange } from "@/lib/changeFlow";
+import { consumeChallenge, getChallenge, retireChallenge, startAttempt } from "@/lib/db";
 import { validateLineUrl } from "@/lib/lineLink";
-import { LINE_URL_KEY, SETTINGS_TAG } from "@/lib/settings";
+import { codeMatches, isUuid, otpRules } from "@/lib/otp";
+import { parsePending, returnPath, type PendingChange } from "@/lib/pending";
 
 const PAGE = "/backoffice/settings";
 
@@ -18,37 +19,83 @@ function assertAdmin() {
   }
 }
 
-// Public pages are cached, so a saved setting must clear both the data and the pages built from it.
-function publish() {
-  revalidateTag(SETTINGS_TAG);
-  revalidatePath("/", "layout");
-}
-
-// Every change needs the administrator password typed again, so an open browser session alone can't change settings.
-async function confirmPassword(formData: FormData, echo: string) {
-  if (passwordMatches(String(formData.get("password") ?? ""), process.env.ADMIN_PASSWORD)) return;
-  // A short pause makes guessing the password through this form slow.
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  redirect(`${PAGE}?error=password${echo}`);
-}
-
+// Saves or resets the LINE link. With TWO_FACTOR_AUTHEN off the typed password is checked and the change is
+// applied; with it on, a one-time password is emailed and the change waits for it.
 export async function saveSettings(formData: FormData) {
   assertAdmin();
 
-  if (formData.get("intent") === "reset") {
-    await confirmPassword(formData, "");
-    await deleteSetting(LINE_URL_KEY);
-    publish();
-    redirect(`${PAGE}?saved=reset`);
+  let change: PendingChange = { type: "line", value: null };
+  let echo = "";
+
+  if (formData.get("intent") !== "reset") {
+    const raw = String(formData.get("lineUrl") ?? "");
+    const result = validateLineUrl(raw);
+    if (!result.ok) {
+      redirect(`${PAGE}?error=${result.error}&value=${encodeURIComponent(raw.slice(0, 300))}`);
+    }
+    change = { type: "line", value: result.value };
+    echo = `&value=${encodeURIComponent(result.value)}`;
   }
 
-  const raw = String(formData.get("lineUrl") ?? "");
-  const result = validateLineUrl(raw);
-  if (!result.ok) {
-    redirect(`${PAGE}?error=${result.error}&value=${encodeURIComponent(raw.slice(0, 300))}`);
+  const submitted = await submitChange(change, formData);
+  if (!submitted.ok) redirect(`${PAGE}?error=${submitted.error}${echo}`);
+  redirect(submitted.to);
+}
+
+// Applies the change only if the code is right.
+export async function verifyCode(formData: FormData) {
+  assertAdmin();
+
+  const id = String(formData.get("challenge") ?? "");
+  if (!isUuid(id)) redirect(PAGE);
+  const code = String(formData.get("code") ?? "").replace(/\s/g, "");
+  // Development only: keep showing the code on the verification page after a mistake.
+  const dev = String(formData.get("dev") ?? "");
+  const keepDev = process.env.NODE_ENV === "development" && /^\d{6}$/.test(dev) ? devParam(dev) : "";
+  if (!/^\d{6}$/.test(code)) redirect(`${VERIFY_PATH}?c=${id}&error=format${keepDev}`);
+
+  const { maxAttempts } = otpRules();
+  const attempt = await startAttempt(id, maxAttempts);
+  if (!attempt) redirect(`${VERIFY_PATH}?c=${id}`);
+
+  if (!codeMatches(attempt.code_hash, id, code)) {
+    if (attempt.attempts >= maxAttempts) {
+      await retireChallenge(id);
+      redirect(`${VERIFY_PATH}?c=${id}&error=locked`);
+    }
+    redirect(`${VERIFY_PATH}?c=${id}&error=wrong&left=${maxAttempts - attempt.attempts}${keepDev}`);
   }
-  await confirmPassword(formData, `&value=${encodeURIComponent(result.value)}`);
-  await upsertSetting(LINE_URL_KEY, result.value);
-  publish();
-  redirect(`${PAGE}?saved=1`);
+
+  if (!(await consumeChallenge(id))) redirect(`${VERIFY_PATH}?c=${id}`);
+
+  // Checked once more, so a changed row can never put unsafe text on the site.
+  const change = parsePending(attempt.payload);
+  if (!change) redirect(`${PAGE}?error=invalid`);
+
+  const done = await applyChange(change);
+  redirect(`${returnPath(change)}?saved=${done.saved}&mail=${done.mail}`);
+}
+
+// Sends a fresh code for the same change. The old code stops working.
+export async function resendCode(formData: FormData) {
+  assertAdmin();
+
+  const id = String(formData.get("challenge") ?? "");
+  const row = isUuid(id) ? await getChallenge(id) : null;
+  if (!row || row.consumed_at) redirect(isUuid(id) ? `${VERIFY_PATH}?c=${id}` : PAGE);
+
+  const change = parsePending(row.payload);
+  if (!change) redirect(PAGE);
+
+  const issued = await issueChallenge(change);
+  if ("error" in issued) redirect(`${VERIFY_PATH}?c=${id}&error=${issued.error}`);
+  redirect(`${VERIFY_PATH}?c=${issued.id}&sent=1${devParam(issued.devCode)}`);
+}
+
+export async function cancelChange(formData: FormData) {
+  assertAdmin();
+
+  const id = String(formData.get("challenge") ?? "");
+  if (isUuid(id)) await retireChallenge(id);
+  redirect(PAGE);
 }

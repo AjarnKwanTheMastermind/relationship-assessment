@@ -103,6 +103,70 @@ export async function deleteSetting(key: string): Promise<void> {
   await getPool().query("DELETE FROM settings WHERE key = $1", [key]);
 }
 
+export type ChallengeRow = {
+  id: string;
+  payload: string;
+  code_hash: string;
+  attempts: number;
+  expires_at: Date;
+  consumed_at: Date | null;
+};
+
+export async function countRecentChallenges(minutes: number): Promise<number> {
+  const { rows } = await getPool().query<{ n: number }>(
+    "SELECT count(*)::int AS n FROM otp_challenges WHERE created_at > now() - make_interval(mins => $1::int)",
+    [minutes],
+  );
+  return rows[0].n;
+}
+
+// Only one challenge can be open at a time, so a new one retires every earlier one.
+export async function createChallenge(id: string, payload: string, codeHash: string, ttlMinutes: number): Promise<void> {
+  await getPool().query(
+    `WITH retired AS (UPDATE otp_challenges SET consumed_at = now() WHERE consumed_at IS NULL)
+     INSERT INTO otp_challenges (id, payload, code_hash, expires_at)
+     VALUES ($1, $2, $3, now() + make_interval(mins => $4::int))`,
+    [id, payload, codeHash, ttlMinutes],
+  );
+  await getPool().query("DELETE FROM otp_challenges WHERE created_at < now() - interval '7 days'");
+}
+
+export async function getChallenge(id: string): Promise<ChallengeRow | null> {
+  const { rows } = await getPool().query<ChallengeRow>(
+    "SELECT id, payload, code_hash, attempts, expires_at, consumed_at FROM otp_challenges WHERE id = $1",
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+// Counts the try before the code is compared, so parallel guesses can't exceed the limit.
+export async function startAttempt(id: string, maxAttempts: number): Promise<ChallengeRow | null> {
+  const { rows } = await getPool().query<ChallengeRow>(
+    `UPDATE otp_challenges SET attempts = attempts + 1
+     WHERE id = $1 AND consumed_at IS NULL AND expires_at > now() AND attempts < $2
+     RETURNING id, payload, code_hash, attempts, expires_at, consumed_at`,
+    [id, maxAttempts],
+  );
+  return rows[0] ?? null;
+}
+
+// True for exactly one caller, so a correct code can only be used once.
+export async function consumeChallenge(id: string): Promise<boolean> {
+  const result = await getPool().query(
+    "UPDATE otp_challenges SET consumed_at = now() WHERE id = $1 AND consumed_at IS NULL AND expires_at > now()",
+    [id],
+  );
+  return result.rowCount === 1;
+}
+
+export async function retireChallenge(id: string): Promise<void> {
+  await getPool().query("UPDATE otp_challenges SET consumed_at = now() WHERE id = $1 AND consumed_at IS NULL", [id]);
+}
+
+export async function deleteChallenge(id: string): Promise<void> {
+  await getPool().query("DELETE FROM otp_challenges WHERE id = $1", [id]);
+}
+
 export type DailyCount = { day: string; responses: number };
 
 // Completed quizzes per Bangkok calendar day, for dates from and to inclusive (YYYY-MM-DD).

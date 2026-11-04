@@ -13,8 +13,19 @@ CREATE TABLE IF NOT EXISTS responses (
 
 CREATE INDEX IF NOT EXISTS responses_created_at_idx ON responses (created_at DESC);
 
--- Settings changes were once approved by emailed one-time passwords; the administrator password is asked instead.
-DROP TABLE IF EXISTS otp_challenges;
+-- One-time passwords that approve a settings change while TWO_FACTOR_AUTHEN is on.
+-- payload is the pending change as JSON. Only a keyed hash of the code is stored.
+CREATE TABLE IF NOT EXISTS otp_challenges (
+  id          uuid PRIMARY KEY,
+  payload     text NOT NULL,
+  code_hash   text NOT NULL,
+  attempts    smallint NOT NULL DEFAULT 0,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  expires_at  timestamptz NOT NULL,
+  consumed_at timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS otp_challenges_created_at_idx ON otp_challenges (created_at DESC);
 
 -- Application settings edited in the backoffice. A missing row means the built-in default is used.
 CREATE TABLE IF NOT EXISTS settings (
