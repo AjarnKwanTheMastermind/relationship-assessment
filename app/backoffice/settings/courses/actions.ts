@@ -13,7 +13,10 @@ export type CourseFormState = {
   errors: CourseErrors;
   // "password" is the administrator password being wrong; "form" is a problem with the request itself;
   // the others are reasons a one-time password could not be sent while TWO_FACTOR_AUTHEN is on.
-  message?: "password" | "form" | OtpError;
+  message?: "password" | "locked" | "form" | OtpError;
+  // For a wrong password, the tries that remain; for a lock, when it ends (ms since 1970).
+  left?: number;
+  until?: number;
   values: CourseValues;
 };
 
@@ -49,6 +52,9 @@ export async function saveCourse(formData: FormData): Promise<CourseFormState | 
   }
 
   const submitted = await submitChange(change, formData);
-  if (!submitted.ok) return { errors: {}, message: submitted.error, values };
+  if (!submitted.ok) {
+    const detail = submitted.error === "password" ? { left: submitted.left } : submitted.error === "locked" ? { until: submitted.until } : {};
+    return { errors: {}, message: submitted.error, values, ...detail };
+  }
   redirect(submitted.to);
 }

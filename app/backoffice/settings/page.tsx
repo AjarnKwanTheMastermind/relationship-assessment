@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { DEFAULT_LINE_URL, MAX_LINE_URL_LENGTH, lineLabel, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
 import MailNotice from "@/components/MailNotice";
+import LockNotice from "@/components/LockNotice";
+import { getPasswordLock } from "@/lib/db";
+import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
 import { adminEmail, deliveryMode, maskEmail } from "@/lib/notify";
 import { otpErrors } from "@/lib/otpErrors";
 import { readSettingsNow } from "@/lib/settings";
@@ -20,18 +23,21 @@ const savedMessages: Record<string, string> = {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { saved?: string; error?: string; value?: string; mail?: string };
+  searchParams: { saved?: string; error?: string; value?: string; mail?: string; left?: string; until?: string };
 }) {
   const { settings, updatedAt, courseUpdatedAt } = await readSettingsNow();
   const twoFactor = twoFactorOn();
   const email = adminEmail();
   const canSendCode = Boolean(email) && deliveryMode() !== "unavailable";
+  // While saving is locked after too many wrong passwords, say so before anyone tries.
+  const lockedUntil = twoFactor ? null : await getPasswordLock();
 
   const errorMessages: Record<string, string> = {
     ...lineUrlErrors,
     ...otpErrors,
     invalid: "คำขอไม่ถูกต้อง การตั้งค่ายังไม่เปลี่ยน",
-    password: "รหัสผ่านผู้ดูแลไม่ถูกต้อง การตั้งค่ายังไม่เปลี่ยน",
+    password: wrongPasswordMessage(searchParams.left === undefined ? undefined : Number(searchParams.left)),
+    locked: lockedMessage(searchParams.until === undefined ? undefined : Number(searchParams.until)),
   };
   const errorKey = searchParams.error ?? "";
   const error = Object.prototype.hasOwnProperty.call(errorMessages, errorKey) ? errorMessages[errorKey] : null;
@@ -56,6 +62,7 @@ export default async function SettingsPage({
         </p>
       )}
       {saved && <MailNotice status={searchParams.mail} />}
+      {searchParams.error !== "locked" && <LockNotice until={lockedUntil} />}
       {error && (
         <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
           {error}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { fieldRules, type CourseField, type CourseValues } from "@/lib/courseEdit";
+import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
 import { otpErrors } from "@/lib/otpErrors";
 import { saveCourse, type CourseFormState } from "@/app/backoffice/settings/courses/actions";
 
@@ -65,7 +66,7 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
       )}
       {message && message !== "password" && message !== "form" && (
         <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
-          {otpErrors[message]}
+          {message === "locked" ? lockedMessage(state.until) : otpErrors[message]}
         </p>
       )}
       {Object.keys(errors).length > 0 && (
@@ -122,7 +123,7 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
         />
         {message === "password" && (
           <p role="alert" className="mt-1 text-[11px] text-red-300">
-            รหัสผ่านผู้ดูแลไม่ถูกต้อง การตั้งค่ายังไม่เปลี่ยน
+            {wrongPasswordMessage(state.left)}
           </p>
         )}
       </div>

@@ -1,17 +1,14 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { envInt } from "./envNumber";
 
 // Rules for the one-time password that approves a settings change while two-factor authentication is on.
 // Three limits can be changed with environment variables; a missing or invalid value uses the default.
-function limit(name: string, fallback: number, min: number, max: number): number {
-  const raw = process.env[name]?.trim();
-  const value = Number(raw);
-  return raw && Number.isInteger(value) && value >= min && value <= max ? value : fallback;
-}
+const limit = envInt;
 
 export function otpRules() {
   return {
     ttlMinutes: limit("OTP_TTL_MINUTES", 10, 1, 60),
-    maxAttempts: 5,
+    maxAttempts: limit("OTP_MAX_ATTEMPTS", 5, 1, 10),
     maxRequests: limit("OTP_MAX_REQUESTS", 3, 1, 20),
     windowMinutes: limit("OTP_REQUEST_WINDOW_MINUTES", 15, 1, 1440),
   };

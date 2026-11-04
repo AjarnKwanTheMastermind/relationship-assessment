@@ -1,19 +1,24 @@
+import QuestionStatsHeader from "@/components/QuestionStatsHeader";
+import { parsePeriod } from "@/lib/dateRange";
 import { getAnswerCounts } from "@/lib/db";
 import { buildQuestionStats, formatPercent, optionColors } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportPage() {
-  const stats = buildQuestionStats(await getAnswerCounts());
+export default async function ReportPage({
+  searchParams,
+}: {
+  searchParams: { period?: string | string[]; from?: string | string[]; to?: string | string[] };
+}) {
+  const period = parsePeriod(searchParams.period, searchParams.from, searchParams.to);
+  // With a mistake in the dates nothing is counted, and the form explains the mistake.
+  const stats = buildQuestionStats(period.error ? [] : await getAnswerCounts(period.mode === "range" ? period : undefined));
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-kanit text-2xl font-bold text-white">รายงานสถิติรายข้อ</h1>
-        <p className="text-xs font-light text-gray-400">จำนวนครั้งที่เลือกแต่ละคำตอบ และคิดเป็นร้อยละของผู้ตอบข้อนั้น</p>
-      </div>
+      <QuestionStatsHeader active="numbers" period={period} />
 
-      {stats.map((q) => (
+      {!period.error && stats.map((q) => (
         <section key={q.id} className="glass-card overflow-x-auto rounded-2xl p-4 sm:p-5">
           <p className="mb-1 text-[11px] text-brand-roseGold">{q.categoryTitle}</p>
           <h2 className="mb-3 text-sm font-medium leading-relaxed text-white">{q.question}</h2>

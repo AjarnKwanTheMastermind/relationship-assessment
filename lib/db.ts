@@ -71,15 +71,23 @@ export async function getAdminStats(): Promise<AdminStats> {
 
 export type AnswerCount = { question_no: number; option_index: number; picks: number };
 
-// One row per question and option picked. Expands the answers array by position.
-export async function getAnswerCounts(): Promise<AnswerCount[]> {
+// One row per question and option picked. Expands the answers array by position. With a range
+// (YYYY-MM-DD, both ends included, Bangkok days) only responses from those days are counted.
+export async function getAnswerCounts(range?: { from: string; to: string }): Promise<AnswerCount[]> {
   const { rows } = await getPool().query<AnswerCount>(
     `SELECT a.question_no::int AS question_no,
             a.option_index::int AS option_index,
             count(*)::int AS picks
      FROM responses r
      CROSS JOIN LATERAL unnest(r.answers) WITH ORDINALITY AS a(option_index, question_no)
+     ${
+       range
+         ? `WHERE r.created_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Bangkok')
+              AND r.created_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Bangkok')`
+         : ""
+     }
      GROUP BY a.question_no, a.option_index`,
+    range ? [range.from, range.to] : [],
   );
   return rows;
 }
@@ -165,6 +173,49 @@ export async function retireChallenge(id: string): Promise<void> {
 
 export async function deleteChallenge(id: string): Promise<void> {
   await getPool().query("DELETE FROM otp_challenges WHERE id = $1", [id]);
+}
+
+// Counts one try of the administrator password, before it is compared. While a lock is active the
+// count stays as it is. The count starts again when the first try is older than the window.
+export async function takePasswordAttempt(windowMinutes: number): Promise<{ attempts: number; lockedUntil: Date | null }> {
+  const { rows } = await getPool().query<{ attempts: number; locked_until: Date | null }>(
+    `INSERT INTO password_failures AS p (id, attempts, window_started_at)
+     VALUES (1, 1, now())
+     ON CONFLICT (id) DO UPDATE SET
+       attempts = CASE
+         WHEN p.locked_until > now() THEN p.attempts
+         WHEN p.window_started_at < now() - make_interval(mins => $1::int) THEN 1
+         ELSE p.attempts + 1 END,
+       window_started_at = CASE
+         WHEN p.locked_until > now() THEN p.window_started_at
+         WHEN p.window_started_at < now() - make_interval(mins => $1::int) THEN now()
+         ELSE p.window_started_at END
+     RETURNING attempts, locked_until`,
+    [windowMinutes],
+  );
+  return { attempts: rows[0].attempts, lockedUntil: rows[0].locked_until };
+}
+
+export async function lockPassword(minutes: number): Promise<Date> {
+  const { rows } = await getPool().query<{ locked_until: Date }>(
+    `UPDATE password_failures SET locked_until = now() + make_interval(mins => $1::int)
+     WHERE id = 1 RETURNING locked_until`,
+    [minutes],
+  );
+  return rows[0]?.locked_until ?? new Date(Date.now() + minutes * 60_000);
+}
+
+// The end of the lock, or null when saving is not locked.
+export async function getPasswordLock(): Promise<Date | null> {
+  const { rows } = await getPool().query<{ locked_until: Date }>(
+    "SELECT locked_until FROM password_failures WHERE id = 1 AND locked_until > now()",
+  );
+  return rows[0]?.locked_until ?? null;
+}
+
+// A correct password starts the count again.
+export async function clearPasswordFailures(): Promise<void> {
+  await getPool().query("DELETE FROM password_failures WHERE id = 1");
 }
 
 export type DailyCount = { day: string; responses: number };

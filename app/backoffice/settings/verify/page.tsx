@@ -23,7 +23,9 @@ export default async function VerifyPage({
 
   let problem: string | null = null;
   if (!row) problem = "ไม่พบคำขอนี้";
-  else if (row.consumed_at) problem = "คำขอนี้ถูกใช้ไปแล้ว ถูกยกเลิก หรือมีคำขอใหม่แทนที่";
+  else if (row.consumed_at)
+    // The code that was just cancelled for too many wrong tries says so, instead of the general message.
+    problem = searchParams.error === "locked" ? "กรอกรหัสผิดเกินกำหนด รหัสนี้ถูกยกเลิกแล้ว" : "คำขอนี้ถูกใช้ไปแล้ว ถูกยกเลิก หรือมีคำขอใหม่แทนที่";
   else if (row.expires_at.getTime() < Date.now()) problem = "รหัสหมดอายุแล้ว";
   else if (row.attempts >= maxAttempts) problem = "กรอกรหัสผิดเกินกำหนด";
 

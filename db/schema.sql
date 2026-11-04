@@ -33,3 +33,12 @@ CREATE TABLE IF NOT EXISTS settings (
   value      text NOT NULL,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Wrong administrator passwords typed on the settings forms. One row, so the count is shared by everyone.
+-- Tries are counted before the password is compared, so a burst of parallel guesses cannot beat the limit.
+CREATE TABLE IF NOT EXISTS password_failures (
+  id                smallint PRIMARY KEY CHECK (id = 1),
+  attempts          integer NOT NULL,
+  window_started_at timestamptz NOT NULL,
+  locked_until      timestamptz
+);

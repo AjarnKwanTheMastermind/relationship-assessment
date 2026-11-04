@@ -185,3 +185,30 @@ export async function notifySettingsChanged(event: ChangeEvent): Promise<MailSta
   const message = buildMessage(event);
   return (await sendAdminEmail(message.subject, message.text)) ? "sent" : "failed";
 }
+
+// Sent once, when the wrong password limit is reached and saving is locked. Never blocks anything.
+export async function notifyPasswordLocked(info: { attempts: number; until: Date }, at: Date = new Date()): Promise<void> {
+  if (!notificationsConfigured()) return;
+  const who = requester();
+  const lines = [
+    `มีการกรอกรหัสผ่านผู้ดูแลผิด ${info.attempts} ครั้งที่หน้าตั้งค่าของเว็บไซต์ ${siteAddress(who.host)}`,
+    "",
+    `เวลาที่เกิดเหตุการณ์: ${bangkokTime(at)}`,
+    `ระบบล็อกการบันทึกการตั้งค่าไว้จนถึง: ${bangkokTime(info.until)}`,
+    "",
+    "ข้อมูลของคำขอครั้งสุดท้าย (ใช้ประกอบการตรวจสอบ ระบบไม่ได้เก็บข้อมูลนี้ไว้):",
+    `- ที่อยู่ IP: ${who.ip}`,
+    `- เบราว์เซอร์: ${who.agent}`,
+    "",
+    "ยังไม่มีการเปลี่ยนแปลงการตั้งค่าใดๆ",
+    "",
+    "⚠ ถ้าคุณไม่ได้เป็นผู้กรอก แสดงว่ามีคนที่เข้า backoffice ได้กำลังเดารหัสผ่านผู้ดูแล:",
+    "1. เปลี่ยน ADMIN_PASSWORD ใน Netlify เป็นรหัสผ่านใหม่ที่คาดเดายาก แล้ว Deploy",
+    "2. ถ้าสงสัยว่าเว็บไซต์ถูกโจมตี ให้เพิ่ม MAINTENANCE_MODE=on แล้ว Deploy เพื่อปิดเว็บไซต์ชั่วคราว",
+    "3. ตรวจประวัติใน Netlify (Deploys และ Logs) ว่ามีการเข้าถึงที่ไม่คุ้นเคยหรือไม่",
+    "",
+    "ถ้าคุณเป็นผู้กรอกผิดเอง รอให้ครบเวลาล็อกแล้วลองใหม่ได้",
+    "อีเมลนี้ส่งอัตโนมัติ กรุณาอย่าตอบกลับ",
+  ];
+  await sendAdminEmail(`[แจ้งเตือน] กรอกรหัสผ่านผู้ดูแลผิดเกินกำหนด – ${at.toISOString().slice(0, 16).replace("T", " ")} UTC`, lines.join("\n"));
+}

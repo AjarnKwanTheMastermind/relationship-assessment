@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { hasAdminAccess } from "@/lib/adminAuth";
 import { applyChange } from "@/lib/applyChange";
-import { VERIFY_PATH, devParam, issueChallenge, submitChange } from "@/lib/changeFlow";
+import { VERIFY_PATH, devParam, failureQuery, issueChallenge, submitChange } from "@/lib/changeFlow";
 import { consumeChallenge, getChallenge, retireChallenge, startAttempt } from "@/lib/db";
 import { validateLineUrl } from "@/lib/lineLink";
 import { codeMatches, isUuid, otpRules } from "@/lib/otp";
@@ -38,7 +38,7 @@ export async function saveSettings(formData: FormData) {
   }
 
   const submitted = await submitChange(change, formData);
-  if (!submitted.ok) redirect(`${PAGE}?error=${submitted.error}${echo}`);
+  if (!submitted.ok) redirect(`${PAGE}?${failureQuery(submitted)}${echo}`);
   redirect(submitted.to);
 }
 

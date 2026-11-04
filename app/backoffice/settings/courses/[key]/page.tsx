@@ -4,6 +4,8 @@ import MailNotice from "@/components/MailNotice";
 import CourseForm from "@/components/CourseForm";
 import { courseToValues } from "@/lib/courseEdit";
 import { courses } from "@/lib/courses";
+import LockNotice from "@/components/LockNotice";
+import { getPasswordLock } from "@/lib/db";
 import { readSettingsNow } from "@/lib/settings";
 import { twoFactorOn } from "@/lib/twoFactor";
 
@@ -31,6 +33,9 @@ export default async function EditCoursePage({
     ? savedMessages[searchParams.saved as string]
     : null;
   const updatedAt = courseUpdatedAt[params.key];
+  const twoFactor = twoFactorOn();
+  // While saving is locked after too many wrong passwords, say so before anyone tries.
+  const lockedUntil = twoFactor ? null : await getPasswordLock();
 
   return (
     <div className="space-y-4">
@@ -55,11 +60,13 @@ export default async function EditCoursePage({
 
       {saved && <MailNotice status={searchParams.mail} />}
 
+      <LockNotice until={lockedUntil} />
+
       <CourseForm
         key={`${params.key}:${updatedAt?.getTime() ?? 0}`}
         courseKey={params.key}
         initial={courseToValues(course)}
-        twoFactor={twoFactorOn()}
+        twoFactor={twoFactor}
       />
     </div>
   );

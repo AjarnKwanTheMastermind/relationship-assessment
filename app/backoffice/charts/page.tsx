@@ -1,21 +1,26 @@
 import PieChart from "@/components/PieChart";
+import QuestionStatsHeader from "@/components/QuestionStatsHeader";
+import { parsePeriod } from "@/lib/dateRange";
 import { getAnswerCounts } from "@/lib/db";
 import { buildQuestionStats, formatPercent, optionColors, optionLevels } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChartsPage() {
-  const stats = buildQuestionStats(await getAnswerCounts());
+export default async function ChartsPage({
+  searchParams,
+}: {
+  searchParams: { period?: string | string[]; from?: string | string[]; to?: string | string[] };
+}) {
+  const period = parsePeriod(searchParams.period, searchParams.from, searchParams.to);
+  // With a mistake in the dates nothing is counted, and the form explains the mistake.
+  const stats = buildQuestionStats(period.error ? [] : await getAnswerCounts(period.mode === "range" ? period : undefined));
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-kanit text-2xl font-bold text-white">แผนภูมิรายข้อ</h1>
-        <p className="text-xs font-light text-gray-400">สัดส่วนคำตอบของแต่ละข้อ ดูตัวเลขทั้งหมดได้ที่หน้ารายงาน</p>
-      </div>
+      <QuestionStatsHeader active="pie" period={period} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {stats.map((q) => (
+        {!period.error && stats.map((q) => (
           <section key={q.id} className="glass-card flex flex-col rounded-2xl p-4 sm:p-5">
             <h2 className="mb-4 text-sm font-medium leading-relaxed text-white">{q.question}</h2>
             {q.total === 0 ? (
