@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { DEFAULT_LINE_URL, MAX_LINE_URL_LENGTH, lineLabel, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
+import { DEFAULT_LINE_URL, MAX_LINE_URL_LENGTH, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
 import MailNotice from "@/components/MailNotice";
-import LineQr from "@/components/LineQr";
 import LockNotice from "@/components/LockNotice";
+import ScrollToTop from "@/components/ScrollToTop";
 import { getPasswordLock } from "@/lib/db";
 import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
 import { adminEmail, deliveryMode, maskEmail } from "@/lib/notify";
@@ -26,7 +26,7 @@ export default async function SettingsPage({
 }: {
   searchParams: { saved?: string; error?: string; value?: string; mail?: string; left?: string; until?: string };
 }) {
-  const { settings, updatedAt, courseUpdatedAt } = await readSettingsNow();
+  const { settings, courseUpdatedAt } = await readSettingsNow();
   const twoFactor = twoFactorOn();
   const email = adminEmail();
   const canSendCode = Boolean(email) && deliveryMode() !== "unavailable";
@@ -65,9 +65,13 @@ export default async function SettingsPage({
       {saved && <MailNotice status={searchParams.mail} />}
       {searchParams.error !== "locked" && <LockNotice until={lockedUntil} />}
       {error && (
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
-          {error}
-        </p>
+        <>
+          {/* A new key on every render, so the page scrolls up again after each failed save. */}
+          <ScrollToTop key={Date.now()} />
+          <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+            {error}
+          </p>
+        </>
       )}
 
       <form action={saveSettings} className="glass-card space-y-4 rounded-2xl p-4 sm:p-5">
@@ -177,34 +181,6 @@ export default async function SettingsPage({
             เปิด 2FA อยู่ แต่ยังตั้งค่า ADMIN_EMAIL, RESEND_API_KEY หรือ EMAIL_FROM ไม่ครบ จึงบันทึกการตั้งค่าไม่ได้จนกว่าจะตั้งค่าครบ หรือลบตัวแปร TWO_FACTOR_AUTHEN แล้ว Deploy ใหม่
           </p>
         )}
-      </section>
-
-      <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">
-        <h2 className="mb-2 text-sm font-medium text-white">ค่าที่ใช้อยู่ตอนนี้</h2>
-        <dl className="space-y-1">
-          <div className="flex flex-wrap gap-x-2">
-            <dt className="text-gray-400">ลิงก์:</dt>
-            <dd className="break-all">{settings.lineUrl}</dd>
-          </div>
-          <div className="flex flex-wrap gap-x-2">
-            <dt className="text-gray-400">ข้อความที่แสดง:</dt>
-            <dd>{lineLabel(settings.lineUrl)}</dd>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <dt className="text-gray-400">QR Code ที่แสดงในหน้าผลลัพธ์:</dt>
-            <dd className="w-28 overflow-hidden rounded-lg bg-white p-0.5">
-              <LineQr url={settings.lineUrl} className="block h-auto w-full" />
-            </dd>
-          </div>
-          <div className="flex flex-wrap gap-x-2">
-            <dt className="text-gray-400">แก้ไขล่าสุด:</dt>
-            <dd>
-              {updatedAt
-                ? updatedAt.toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
-                : "ยังไม่เคยแก้ไข (ใช้ค่าเริ่มต้น)"}
-            </dd>
-          </div>
-        </dl>
       </section>
     </div>
   );

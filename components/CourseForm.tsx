@@ -32,6 +32,10 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
   // Until the page is ready the buttons stay off, so a form can never be sent the plain browser way.
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
+  // Every failed save counts up `round`. The page then scrolls to the top, where the messages are.
+  useEffect(() => {
+    if (round > 0) window.scrollTo(0, 0);
+  }, [round]);
 
   function submit(formData: FormData, intent: string) {
     formData.set("intent", intent);
@@ -62,6 +66,11 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
       {message === "form" && (
         <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
           ไม่พบคอร์สนี้
+        </p>
+      )}
+      {message === "password" && (
+        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+          {wrongPasswordMessage(state.left)}
         </p>
       )}
       {message && message !== "password" && message !== "form" && (
@@ -121,11 +130,6 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
           aria-invalid={message === "password" ? true : undefined}
           className={inputClass}
         />
-        {message === "password" && (
-          <p role="alert" className="mt-1 text-[11px] text-red-300">
-            {wrongPasswordMessage(state.left)}
-          </p>
-        )}
       </div>
       )}
 

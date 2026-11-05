@@ -3,6 +3,7 @@ import { describeChange } from "@/lib/applyChange";
 import { getChallenge } from "@/lib/db";
 import { adminEmail, maskEmail, show } from "@/lib/notify";
 import { isUuid, otpRules } from "@/lib/otp";
+import ScrollToTop from "@/components/ScrollToTop";
 import { otpErrors } from "@/lib/otpErrors";
 import { parsePending } from "@/lib/pending";
 import { cancelChange, resendCode, verifyCode } from "../actions";
@@ -36,6 +37,7 @@ export default async function VerifyPage({
     return (
       <div className="space-y-4">
         <h1 className="font-kanit text-2xl font-bold text-white">ยืนยันรหัส OTP</h1>
+        <ScrollToTop key={Date.now()} />
         <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
           {problem} การตั้งค่ายังไม่เปลี่ยน กรุณาเริ่มต้นใหม่จากหน้าตั้งค่า
         </p>
@@ -81,9 +83,12 @@ export default async function VerifyPage({
         </p>
       )}
       {error && (
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
-          {error}
-        </p>
+        <>
+          <ScrollToTop key={Date.now()} />
+          <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+            {error}
+          </p>
+        </>
       )}
 
       <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">

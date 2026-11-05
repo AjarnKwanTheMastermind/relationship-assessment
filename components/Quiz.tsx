@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ScrollToTop from "./ScrollToTop";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { questions } from "@/lib/quiz";
 
@@ -11,6 +12,8 @@ export default function Quiz() {
   const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
+  // Counts failed sends, so the page scrolls up again when the same error repeats.
+  const [failures, setFailures] = useState(0);
 
   const q = questions[index];
   const selected = answers[index];
@@ -40,12 +43,22 @@ export default function Quiz() {
       router.push(`/results/${id}`);
     } catch {
       setError(true);
+      setFailures((n) => n + 1);
       setSubmitting(false);
     }
   }
 
   return (
     <div className="glass-card box-glow rounded-3xl border border-brand-pink/20 p-5 sm:p-8">
+      {error && (
+        <>
+          {/* At the top of the card, with the page scrolled up to it, so it is seen after pressing the last button. */}
+          <ScrollToTop key={failures} />
+          <p role="alert" className="mb-4 rounded-xl border border-red-500/40 bg-red-950/20 p-3 text-sm text-red-300">
+            ไม่สามารถส่งคำตอบได้ กรุณาลองใหม่อีกครั้ง
+          </p>
+        </>
+      )}
       <div className="mb-6">
         <div className="mb-2 flex items-center justify-between gap-2 text-xs sm:text-sm">
           <span className="rounded-full border border-brand-pink/40 bg-brand-pink/20 px-3 py-1 font-semibold text-brand-pink">
@@ -92,12 +105,6 @@ export default function Quiz() {
             })}
           </div>
         </div>
-
-        {error && (
-          <p role="alert" className="mt-4 text-sm text-red-400">
-            ไม่สามารถส่งคำตอบได้ กรุณาลองใหม่อีกครั้ง
-          </p>
-        )}
 
         <div className="mt-8 flex items-center justify-between border-t border-brand-border/60 pt-4">
           <button

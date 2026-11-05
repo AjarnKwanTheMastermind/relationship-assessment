@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LineChart from "@/components/LineChart";
+import ScrollToTop from "@/components/ScrollToTop";
 import { getDailyResponseCounts } from "@/lib/db";
 import { daysBetween, lastDays, parseDateRange } from "@/lib/dateRange";
 
@@ -74,9 +75,12 @@ export default async function UsagePage({
       </form>
 
       {error ? (
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
-          {error}
-        </p>
+        <>
+          <ScrollToTop key={Date.now()} />
+          <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+            {error}
+          </p>
+        </>
       ) : (
         <>
           <section className="glass-card rounded-2xl p-5">
