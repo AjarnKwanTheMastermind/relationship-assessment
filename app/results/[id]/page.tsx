@@ -50,7 +50,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
     <div className="space-y-6">
       <div className="glass-card box-glow relative overflow-hidden rounded-3xl border-t-4 border-t-brand-pink p-6 text-center sm:p-8">
         <div className="mb-2 text-xs font-bold uppercase tracking-widest text-brand-pink">
-          STRATEGIC RELATIONSHIP AUDIT REPORT
+          STRATEGIC RELATIONSHIP ASSESSMENT REPORT
         </div>
         <h1 className="mb-1 font-kanit text-2xl font-bold text-white sm:text-3xl">
           รายงานผลการวิเคราะห์สถานะความสัมพันธ์

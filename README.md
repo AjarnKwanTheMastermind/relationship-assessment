@@ -1,4 +1,4 @@
-# Strategic Relationship Audit
+# Strategic Relationship Assessment
 
 A 10-question relationship assessment in Thai, built with Next.js and PostgreSQL.
 

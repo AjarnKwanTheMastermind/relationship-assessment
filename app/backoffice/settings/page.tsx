@@ -58,9 +58,13 @@ export default async function SettingsPage({
       </div>
 
       {saved && (
-        <p role="status" className="rounded-2xl border border-brand-pink/40 bg-brand-pink/10 p-4 text-sm text-brand-roseGold">
-          {saved}
-        </p>
+        <>
+          {/* A new key on every render, so the page scrolls up again after each successful save. */}
+          <ScrollToTop key={Date.now()} />
+          <p role="status" className="rounded-2xl border border-brand-pink/40 bg-brand-pink/10 p-4 text-sm text-brand-roseGold">
+            {saved}
+          </p>
+        </>
       )}
       {saved && <MailNotice status={searchParams.mail} />}
       {searchParams.error !== "locked" && <LockNotice until={lockedUntil} />}

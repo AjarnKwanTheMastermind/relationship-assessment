@@ -18,7 +18,7 @@ export default function IntroPage() {
       <h1 className="mb-3 font-kanit text-2xl font-extrabold leading-snug tracking-wide text-white sm:text-4xl">
         แบบประเมินสถานะความสัมพันธ์เชิงยุทธศาสตร์
         <span className="mt-2 block bg-gradient-to-r from-brand-pink via-brand-roseGold to-white bg-clip-text text-lg font-normal text-transparent sm:text-2xl">
-          (Strategic Relationship Audit)
+          (Strategic Relationship Assessment)
         </span>
       </h1>
 

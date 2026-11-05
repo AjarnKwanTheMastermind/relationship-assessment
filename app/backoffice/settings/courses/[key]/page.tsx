@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MailNotice from "@/components/MailNotice";
+import ScrollToTop from "@/components/ScrollToTop";
 import CourseForm from "@/components/CourseForm";
 import { courseToValues } from "@/lib/courseEdit";
 import { courses } from "@/lib/courses";
@@ -53,9 +54,13 @@ export default async function EditCoursePage({
       </div>
 
       {saved && (
-        <p role="status" className="rounded-2xl border border-brand-pink/40 bg-brand-pink/10 p-4 text-sm text-brand-roseGold">
-          {saved}
-        </p>
+        <>
+          {/* A new key on every render, so the page scrolls up again after each successful save. */}
+          <ScrollToTop key={Date.now()} />
+          <p role="status" className="rounded-2xl border border-brand-pink/40 bg-brand-pink/10 p-4 text-sm text-brand-roseGold">
+            {saved}
+          </p>
+        </>
       )}
 
       {saved && <MailNotice status={searchParams.mail} />}
