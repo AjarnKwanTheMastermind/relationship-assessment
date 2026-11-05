@@ -39,6 +39,8 @@ export default function config(phase) {
     distDir: dev ? ".next-dev" : ".next",
     experimental: {
       serverComponentsExternalPackages: ["pg"],
+      // The settings forms hold a few kilobytes of text; this keeps a huge post from being read in full.
+      serverActions: { bodySizeLimit: "256kb" },
     },
     async headers() {
       return [{ source: "/:path*", headers: securityHeaders }];

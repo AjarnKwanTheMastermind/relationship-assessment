@@ -38,7 +38,7 @@ export function parseDateRange(fromParam: unknown, toParam: unknown, today = tod
   if (from > to) {
     return { from, to, error: "วันที่เริ่มต้นต้องไม่อยู่หลังวันที่สิ้นสุด" };
   }
-  if (Number.isFinite(maxDays) && daysBetween(from, to).length > maxDays) {
+  if (Number.isFinite(maxDays) && dayCount(from, to) > maxDays) {
     return { from, to, error: `เลือกช่วงวันที่ได้ไม่เกิน ${maxDays} วัน` };
   }
   return { from, to, error: null };
@@ -66,6 +66,12 @@ export function lastDays(days: number, today = todayInBangkok()) {
   return { from: fromTime(toTime(today) - (days - 1) * DAY_MS), to: today };
 }
 
+// How many days the range holds, worked out by arithmetic so a huge range costs nothing to check.
+export function dayCount(from: string, to: string) {
+  return Math.round((toTime(to) - toTime(from)) / DAY_MS) + 1;
+}
+
+// The list of days. Only call it for a range that already passed the length check.
 export function daysBetween(from: string, to: string) {
   const days: string[] = [];
   for (let time = toTime(from); time <= toTime(to); time += DAY_MS) days.push(fromTime(time));

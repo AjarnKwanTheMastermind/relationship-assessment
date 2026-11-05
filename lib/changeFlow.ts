@@ -6,8 +6,7 @@ import { applyChange, describeChange } from "./applyChange";
 import { passwordMatches } from "./confirmPassword";
 import {
   clearPasswordFailures,
-  countRecentChallenges,
-  createChallenge,
+  createChallengeLimited,
   deleteChallenge,
   lockPassword,
   takePasswordAttempt,
@@ -16,6 +15,7 @@ import { adminEmail, deliveryMode, notifyPasswordLocked, sendOtpEmail } from "./
 import { hashCode, newCode, otpRules } from "./otp";
 import type { OtpError } from "./otpErrors";
 import { passwordRules } from "./passwordLock";
+import { securityLog } from "./securityLog";
 import { returnPath, type PendingChange } from "./pending";
 import { twoFactorOn } from "./twoFactor";
 
@@ -43,17 +43,24 @@ export async function issueChallenge(change: PendingChange): Promise<{ id: strin
   const mode = deliveryMode();
   if (mode === "unavailable") return { error: "noprovider" };
   const rules = otpRules();
-  if ((await countRecentChallenges(rules.windowMinutes)) >= rules.maxRequests) return { error: "rate" };
-
-  const { subject, changes } = await describeChange(change);
   const id = randomUUID();
   const code = newCode();
-  await createChallenge(id, JSON.stringify(change), hashCode(id, code), rules.ttlMinutes);
-
-  if (!(await sendOtpEmail(code, subject, changes, rules.ttlMinutes))) {
-    await deleteChallenge(id);
-    return { error: "send" };
+  // The limit is checked and the code stored in one locked step, so parallel requests cannot get past it.
+  const created = await createChallengeLimited(id, JSON.stringify(change), hashCode(id, code), rules.ttlMinutes, rules.windowMinutes, rules.maxRequests);
+  if (!created) {
+    securityLog("otp_rate_limited", { max: rules.maxRequests, windowMinutes: rules.windowMinutes });
+    return { error: "rate" };
   }
+
+  let sent = false;
+  try {
+    const { subject, changes } = await describeChange(change);
+    sent = await sendOtpEmail(code, subject, changes, rules.ttlMinutes);
+  } finally {
+    if (!sent) await deleteChallenge(id);
+  }
+  if (!sent) return { error: "send" };
+  securityLog("otp_requested", {});
   // In development nothing is emailed, so the code is passed on to the verification page.
   return { id, devCode: mode === "console" ? code : null };
 }
@@ -65,6 +72,7 @@ async function checkPassword(formData: FormData): Promise<SubmitFailure | null> 
   const attempt = await takePasswordAttempt(rules.lockMinutes);
 
   if (attempt.lockedUntil && attempt.lockedUntil.getTime() > Date.now()) {
+    securityLog("password_locked", { refused: true });
     return { error: "locked", until: attempt.lockedUntil.getTime() };
   }
   if (attempt.attempts > rules.maxAttempts) {
@@ -77,10 +85,12 @@ async function checkPassword(formData: FormData): Promise<SubmitFailure | null> 
     return null;
   }
 
+  securityLog("password_failed", { attempts: attempt.attempts, max: rules.maxAttempts });
   // A short pause makes guessing the password through this form slow.
   await new Promise((resolve) => setTimeout(resolve, 1000));
   if (attempt.attempts >= rules.maxAttempts) {
     const until = await lockPassword(rules.lockMinutes);
+    securityLog("password_locked", { attempts: attempt.attempts, lockMinutes: rules.lockMinutes });
     // The warning goes out once, when the limit is first reached.
     if (attempt.attempts === rules.maxAttempts) await notifyPasswordLocked({ attempts: attempt.attempts, until });
     return { error: "locked", until: until.getTime() };
@@ -94,6 +104,7 @@ export async function submitChange(change: PendingChange, formData: FormData): P
     const failure = await checkPassword(formData);
     if (failure) return { ok: false, ...failure };
     const done = await applyChange(change);
+    securityLog("change_applied", { how: "password" });
     return { ok: true, to: `${returnPath(change)}?saved=${done.saved}&mail=${done.mail}` };
   }
 

@@ -42,3 +42,12 @@ CREATE TABLE IF NOT EXISTS password_failures (
   window_started_at timestamptz NOT NULL,
   locked_until      timestamptz
 );
+
+-- Wrong logins at the backoffice prompt (HTTP Basic), counted the same way and kept in one row. The middleware asks
+-- /api/auth/check, which counts each try before the password is compared and locks the login for a while.
+CREATE TABLE IF NOT EXISTS login_failures (
+  id                smallint PRIMARY KEY CHECK (id = 1),
+  attempts          integer NOT NULL,
+  window_started_at timestamptz NOT NULL,
+  locked_until      timestamptz
+);

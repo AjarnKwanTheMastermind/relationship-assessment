@@ -120,23 +120,44 @@ export type ChallengeRow = {
   consumed_at: Date | null;
 };
 
-export async function countRecentChallenges(minutes: number): Promise<number> {
-  const { rows } = await getPool().query<{ n: number }>(
-    "SELECT count(*)::int AS n FROM otp_challenges WHERE created_at > now() - make_interval(mins => $1::int)",
-    [minutes],
-  );
-  return rows[0].n;
-}
-
-// Only one challenge can be open at a time, so a new one retires every earlier one.
-export async function createChallenge(id: string, payload: string, codeHash: string, ttlMinutes: number): Promise<void> {
-  await getPool().query(
-    `WITH retired AS (UPDATE otp_challenges SET consumed_at = now() WHERE consumed_at IS NULL)
-     INSERT INTO otp_challenges (id, payload, code_hash, expires_at)
-     VALUES ($1, $2, $3, now() + make_interval(mins => $4::int))`,
-    [id, payload, codeHash, ttlMinutes],
-  );
+// Creates a challenge, unless this many were already created in the window. The count and the insert happen
+// inside one transaction that holds a lock, so a burst of parallel requests cannot all pass the check.
+// Only one challenge can be open at a time, so a new one retires every earlier one. False when the limit is reached.
+export async function createChallengeLimited(
+  id: string,
+  payload: string,
+  codeHash: string,
+  ttlMinutes: number,
+  windowMinutes: number,
+  maxRequests: number,
+): Promise<boolean> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    // Transaction-level lock (released at COMMIT or ROLLBACK), so it also works behind Neon's pooler.
+    await client.query("SELECT pg_advisory_xact_lock(727001)");
+    const { rows } = await client.query<{ n: number }>(
+      "SELECT count(*)::int AS n FROM otp_challenges WHERE created_at > now() - make_interval(mins => $1::int)",
+      [windowMinutes],
+    );
+    if (rows[0].n >= maxRequests) {
+      await client.query("ROLLBACK");
+      return false;
+    }
+    await client.query("UPDATE otp_challenges SET consumed_at = now() WHERE consumed_at IS NULL");
+    await client.query(
+      "INSERT INTO otp_challenges (id, payload, code_hash, expires_at) VALUES ($1, $2, $3, now() + make_interval(mins => $4::int))",
+      [id, payload, codeHash, ttlMinutes],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
   await getPool().query("DELETE FROM otp_challenges WHERE created_at < now() - interval '7 days'");
+  return true;
 }
 
 export async function getChallenge(id: string): Promise<ChallengeRow | null> {
@@ -175,11 +196,15 @@ export async function deleteChallenge(id: string): Promise<void> {
   await getPool().query("DELETE FROM otp_challenges WHERE id = $1", [id]);
 }
 
-// Counts one try of the administrator password, before it is compared. While a lock is active the
-// count stays as it is. The count starts again when the first try is older than the window.
-export async function takePasswordAttempt(windowMinutes: number): Promise<{ attempts: number; lockedUntil: Date | null }> {
+// Wrong tries of the administrator password (settings forms) and of the backoffice login are counted the same
+// way, each in its own one-row table. The table name comes from this fixed list, never from a request.
+type FailureTable = "password_failures" | "login_failures";
+
+// Counts one try, before the password is compared. While a lock is active the count stays as it is.
+// The count starts again when the first try is older than the window.
+async function takeAttempt(table: FailureTable, windowMinutes: number): Promise<{ attempts: number; lockedUntil: Date | null }> {
   const { rows } = await getPool().query<{ attempts: number; locked_until: Date | null }>(
-    `INSERT INTO password_failures AS p (id, attempts, window_started_at)
+    `INSERT INTO ${table} AS p (id, attempts, window_started_at)
      VALUES (1, 1, now())
      ON CONFLICT (id) DO UPDATE SET
        attempts = CASE
@@ -196,14 +221,18 @@ export async function takePasswordAttempt(windowMinutes: number): Promise<{ atte
   return { attempts: rows[0].attempts, lockedUntil: rows[0].locked_until };
 }
 
-export async function lockPassword(minutes: number): Promise<Date> {
+async function lockFailures(table: FailureTable, minutes: number): Promise<Date> {
   const { rows } = await getPool().query<{ locked_until: Date }>(
-    `UPDATE password_failures SET locked_until = now() + make_interval(mins => $1::int)
-     WHERE id = 1 RETURNING locked_until`,
+    `UPDATE ${table} SET locked_until = now() + make_interval(mins => $1::int) WHERE id = 1 RETURNING locked_until`,
     [minutes],
   );
   return rows[0]?.locked_until ?? new Date(Date.now() + minutes * 60_000);
 }
+
+export const takePasswordAttempt = (windowMinutes: number) => takeAttempt("password_failures", windowMinutes);
+export const lockPassword = (minutes: number) => lockFailures("password_failures", minutes);
+export const takeLoginAttempt = (windowMinutes: number) => takeAttempt("login_failures", windowMinutes);
+export const lockLogin = (minutes: number) => lockFailures("login_failures", minutes);
 
 // The end of the lock, or null when saving is not locked.
 export async function getPasswordLock(): Promise<Date | null> {
@@ -216,6 +245,19 @@ export async function getPasswordLock(): Promise<Date | null> {
 // A correct password starts the count again.
 export async function clearPasswordFailures(): Promise<void> {
   await getPool().query("DELETE FROM password_failures WHERE id = 1");
+}
+
+export async function clearLoginFailures(): Promise<void> {
+  await getPool().query("DELETE FROM login_failures WHERE id = 1");
+}
+
+// Completed quizzes saved in the last N seconds, for the limit on how fast the quiz can be filled in.
+export async function countRecentResponses(seconds: number): Promise<number> {
+  const { rows } = await getPool().query<{ n: number }>(
+    "SELECT count(*)::int AS n FROM responses WHERE created_at > now() - make_interval(secs => $1::int)",
+    [seconds],
+  );
+  return rows[0].n;
 }
 
 export type DailyCount = { day: string; responses: number };

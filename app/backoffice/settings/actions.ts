@@ -7,8 +7,10 @@ import { applyChange } from "@/lib/applyChange";
 import { VERIFY_PATH, devParam, failureQuery, issueChallenge, submitChange } from "@/lib/changeFlow";
 import { consumeChallenge, getChallenge, retireChallenge, startAttempt } from "@/lib/db";
 import { validateLineUrl } from "@/lib/lineLink";
+import { notifyCodeCancelled } from "@/lib/notify";
 import { codeMatches, isUuid, otpRules } from "@/lib/otp";
 import { parsePending, returnPath, type PendingChange } from "@/lib/pending";
+import { securityLog } from "@/lib/securityLog";
 
 const PAGE = "/backoffice/settings";
 
@@ -59,8 +61,12 @@ export async function verifyCode(formData: FormData) {
   if (!attempt) redirect(`${VERIFY_PATH}?c=${id}`);
 
   if (!codeMatches(attempt.code_hash, id, code)) {
+    securityLog("otp_wrong", { attempts: attempt.attempts, max: maxAttempts });
     if (attempt.attempts >= maxAttempts) {
       await retireChallenge(id);
+      securityLog("otp_cancelled", { attempts: attempt.attempts });
+      // The warning goes out once: only the try that reaches the limit gets here.
+      await notifyCodeCancelled({ attempts: attempt.attempts });
       redirect(`${VERIFY_PATH}?c=${id}&error=locked`);
     }
     redirect(`${VERIFY_PATH}?c=${id}&error=wrong&left=${maxAttempts - attempt.attempts}${keepDev}`);
@@ -73,6 +79,7 @@ export async function verifyCode(formData: FormData) {
   if (!change) redirect(`${PAGE}?error=invalid`);
 
   const done = await applyChange(change);
+  securityLog("change_applied", { how: "otp" });
   redirect(`${returnPath(change)}?saved=${done.saved}&mail=${done.mail}`);
 }
 

@@ -91,8 +91,19 @@ function bangkokTime(date: Date): string {
   return `${date.toLocaleString("sv-SE", { timeZone: "Asia/Bangkok" })} (เวลาประเทศไทย UTC+7)`;
 }
 
+// The address of the site for the emails. It comes from the environment (SITE_URL, or the URL that Netlify
+// provides). The Host header is chosen by whoever sends the request, so only development uses it.
 function siteAddress(host: string): string {
-  return process.env.URL || (host ? `https://${host}` : "(ไม่ทราบ)");
+  for (const configured of [process.env.SITE_URL, process.env.URL]) {
+    try {
+      const url = new URL(configured?.trim() ?? "");
+      if (url.protocol === "https:" || url.protocol === "http:") return url.origin;
+    } catch {
+      // Not set, or not an address: try the next one.
+    }
+  }
+  if (process.env.NODE_ENV === "development" && host) return `https://${host}`;
+  return "(ไม่ทราบ: ตั้งค่า SITE_URL)";
 }
 
 function changeLines(changes: Change[]): string[] {
@@ -211,4 +222,53 @@ export async function notifyPasswordLocked(info: { attempts: number; until: Date
     "อีเมลนี้ส่งอัตโนมัติ กรุณาอย่าตอบกลับ",
   ];
   await sendAdminEmail(`[แจ้งเตือน] กรอกรหัสผ่านผู้ดูแลผิดเกินกำหนด – ${at.toISOString().slice(0, 16).replace("T", " ")} UTC`, lines.join("\n"));
+}
+
+// Sent once, when the limit of wrong logins at the backoffice prompt is reached and the login is locked.
+export async function notifyLoginLocked(info: { attempts: number; until: Date }, at: Date = new Date()): Promise<void> {
+  if (!notificationsConfigured()) return;
+  const who = requester();
+  const lines = [
+    `มีการกรอกรหัสผ่านผิด ${info.attempts} ครั้งที่หน้าเข้าสู่ระบบ backoffice ของเว็บไซต์ ${siteAddress(who.host)}`,
+    "",
+    `เวลาที่เกิดเหตุการณ์: ${bangkokTime(at)}`,
+    `ระบบล็อกการเข้าสู่ระบบไว้จนถึง: ${bangkokTime(info.until)} (ล็อกทุกคน รวมถึงผู้ที่ใช้รหัสผ่านถูกต้อง)`,
+    "",
+    "ข้อมูลของคำขอครั้งสุดท้าย (ใช้ประกอบการตรวจสอบ ระบบไม่ได้เก็บข้อมูลนี้ไว้):",
+    `- ที่อยู่ IP: ${who.ip}`,
+    `- เบราว์เซอร์: ${who.agent}`,
+    "",
+    "⚠ ถ้าคุณไม่ได้เป็นผู้กรอกผิดเอง แสดงว่ามีคนกำลังเดารหัสผ่านผู้ดูแล:",
+    "1. เปลี่ยน ADMIN_PASSWORD ใน Netlify เป็นรหัสผ่านใหม่ที่ยาวและคาดเดายาก แล้ว Deploy",
+    "2. ถ้าสงสัยว่าเว็บไซต์ถูกโจมตี ให้เพิ่ม MAINTENANCE_MODE=on แล้ว Deploy เพื่อปิดเว็บไซต์ชั่วคราว",
+    "3. ตรวจประวัติใน Netlify (Deploys และ Logs) ว่ามีการเข้าถึงที่ไม่คุ้นเคยหรือไม่",
+    "",
+    "อีเมลนี้ส่งอัตโนมัติ กรุณาอย่าตอบกลับ",
+  ];
+  await sendAdminEmail(`[แจ้งเตือน] กรอกรหัสผ่านเข้า backoffice ผิดเกินกำหนด – ${at.toISOString().slice(0, 16).replace("T", " ")} UTC`, lines.join("\n"));
+}
+
+// Sent when a one-time password is cancelled because too many wrong codes were typed.
+export async function notifyCodeCancelled(info: { attempts: number }, at: Date = new Date()): Promise<void> {
+  if (!notificationsConfigured()) return;
+  const who = requester();
+  const lines = [
+    `มีการกรอกรหัส OTP ผิด ${info.attempts} ครั้ง รหัสนี้จึงถูกยกเลิก ที่เว็บไซต์ ${siteAddress(who.host)}`,
+    "",
+    `เวลาที่เกิดเหตุการณ์: ${bangkokTime(at)}`,
+    "",
+    "ข้อมูลของคำขอครั้งสุดท้าย (ใช้ประกอบการตรวจสอบ ระบบไม่ได้เก็บข้อมูลนี้ไว้):",
+    `- ที่อยู่ IP: ${who.ip}`,
+    `- เบราว์เซอร์: ${who.agent}`,
+    "",
+    "ยังไม่มีการเปลี่ยนแปลงการตั้งค่าใดๆ",
+    "",
+    "⚠ ถ้าคุณไม่ได้เป็นผู้กรอกผิดเอง แสดงว่ามีคนที่รู้รหัสผ่านผู้ดูแลกำลังเดารหัส OTP:",
+    "1. เปลี่ยน ADMIN_PASSWORD ใน Netlify เป็นรหัสผ่านใหม่ที่ยาวและคาดเดายาก แล้ว Deploy",
+    "2. ถ้าสงสัยว่าเว็บไซต์ถูกโจมตี ให้เพิ่ม MAINTENANCE_MODE=on แล้ว Deploy เพื่อปิดเว็บไซต์ชั่วคราว",
+    "3. ตรวจประวัติใน Netlify (Deploys และ Logs) ว่ามีการเข้าถึงที่ไม่คุ้นเคยหรือไม่",
+    "",
+    "อีเมลนี้ส่งอัตโนมัติ กรุณาอย่าตอบกลับ",
+  ];
+  await sendAdminEmail(`[แจ้งเตือน] กรอกรหัส OTP ผิดเกินกำหนด – ${at.toISOString().slice(0, 16).replace("T", " ")} UTC`, lines.join("\n"));
 }

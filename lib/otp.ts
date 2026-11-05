@@ -18,10 +18,12 @@ export function newCode(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
-// The code is bound to its challenge id and keyed with the admin password, so a copy of the
-// database alone can't be used to work out a code, and a code can't be reused for another change.
+// The code is bound to its challenge id and keyed with a secret, so a copy of the database alone can't be
+// used to work out a code, and a code can't be reused for another change. The secret is OTP_SECRET when it
+// is set (a long random value, used for nothing else); otherwise the admin password is used.
 export function hashCode(id: string, code: string): string {
-  return createHmac("sha256", `otp:${process.env.ADMIN_PASSWORD ?? ""}`).update(`${id}:${code}`).digest("hex");
+  const key = process.env.OTP_SECRET?.trim() || process.env.ADMIN_PASSWORD || "";
+  return createHmac("sha256", `otp:${key}`).update(`${id}:${code}`).digest("hex");
 }
 
 export function codeMatches(storedHash: string, id: string, code: string): boolean {
