@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { DEFAULT_LINE_URL, MAX_LINE_URL_LENGTH, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
+import { DEFAULT_LINE_URL, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
 import MailNotice from "@/components/MailNotice";
+import LineUrlInput from "@/components/LineUrlInput";
 import LockNotice from "@/components/LockNotice";
 import ScrollToTop from "@/components/ScrollToTop";
 import { getPasswordLock } from "@/lib/db";
@@ -86,17 +87,7 @@ export default async function SettingsPage({
           <p className="mb-2 text-xs font-light text-gray-400">
             แสดงที่มุมขวาบนของทุกหน้า และในปุ่มสมัครเรียนและปรึกษาของส่วนคอร์ส
           </p>
-          <input
-            id="lineUrl"
-            name="lineUrl"
-            type="url"
-            required
-            maxLength={MAX_LINE_URL_LENGTH}
-            defaultValue={inputValue}
-            aria-invalid={error ? true : undefined}
-            aria-describedby="lineUrlHelp"
-            className={inputClass}
-          />
+          <LineUrlInput defaultValue={inputValue} invalid={Boolean(error)} className={inputClass} />
           <p id="lineUrlHelp" className="mt-1 text-[11px] font-light text-gray-500">
             ต้องขึ้นต้นด้วย https:// และเป็นลิงก์ของ LINE (line.me หรือ lin.ee) ค่าเริ่มต้น: {DEFAULT_LINE_URL}
           </p>

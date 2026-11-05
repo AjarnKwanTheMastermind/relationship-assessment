@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { fieldRules, type CourseField, type CourseValues } from "@/lib/courseEdit";
+import { courseFields, fieldRules, validateCourse, type CourseField, type CourseValues } from "@/lib/courseEdit";
 import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
 import { otpErrors } from "@/lib/otpErrors";
 import { saveCourse, type CourseFormState } from "@/app/backoffice/settings/courses/actions";
@@ -39,6 +39,20 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
 
   function submit(formData: FormData, intent: string) {
     formData.set("intent", intent);
+
+    // The same rules as the server are checked here first, so a blank or too long field is shown at once
+    // and nothing is sent. The server checks again, because a browser check can always be skipped.
+    if (intent === "save") {
+      const typed = {} as CourseValues;
+      for (const field of courseFields) typed[field] = String(formData.get(field) ?? "");
+      const checked = validateCourse(typed);
+      if (!checked.ok) {
+        setState({ errors: checked.errors, values: typed });
+        setRound((n) => n + 1);
+        return;
+      }
+    }
+
     startTransition(async () => {
       const result = await saveCourse(formData);
       // A saved course redirects; only a mistake comes back here.
