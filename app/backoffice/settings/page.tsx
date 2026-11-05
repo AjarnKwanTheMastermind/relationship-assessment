@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DEFAULT_LINE_URL, MAX_LINE_URL_LENGTH, lineLabel, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
 import MailNotice from "@/components/MailNotice";
+import LineQr from "@/components/LineQr";
 import LockNotice from "@/components/LockNotice";
 import { getPasswordLock } from "@/lib/db";
 import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
@@ -188,6 +189,12 @@ export default async function SettingsPage({
           <div className="flex flex-wrap gap-x-2">
             <dt className="text-gray-400">ข้อความที่แสดง:</dt>
             <dd>{lineLabel(settings.lineUrl)}</dd>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <dt className="text-gray-400">QR Code ที่แสดงในหน้าผลลัพธ์:</dt>
+            <dd className="w-28 overflow-hidden rounded-lg bg-white p-0.5">
+              <LineQr url={settings.lineUrl} className="block h-auto w-full" />
+            </dd>
           </div>
           <div className="flex flex-wrap gap-x-2">
             <dt className="text-gray-400">แก้ไขล่าสุด:</dt>

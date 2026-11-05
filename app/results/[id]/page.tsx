@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Compass, Lightbulb, LifeBuoy, Phone, RotateCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import Courses from "@/components/Courses";
+import LineQr from "@/components/LineQr";
 import { getAnswers } from "@/lib/db";
 import { helplines } from "@/lib/helplines";
 import { getSettings } from "@/lib/settings";
@@ -147,7 +148,7 @@ export default async function ResultsPage({ params }: { params: { id: string } }
         </div>
       </section>
 
-      {settings && <Courses lineUrl={settings.lineUrl} courses={settings.courses} />}
+      {settings && <Courses lineUrl={settings.lineUrl} courses={settings.courses} qr={<LineQr url={settings.lineUrl} className="block h-auto w-full" />} />}
 
       <div className="text-center">
         <Link

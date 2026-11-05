@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, Info, MessageCircle, Pin, Star, X } from "lucide-react";
 import type { Course } from "@/lib/courses";
 import { lineHandle, lineLabel } from "@/lib/lineLink";
 
-export default function Courses({ lineUrl, courses }: { lineUrl: string; courses: Course[] }) {
+export default function Courses({ lineUrl, courses, qr }: { lineUrl: string; courses: Course[]; qr?: ReactNode }) {
   const [open, setOpen] = useState<Course | null>(null);
   const handle = lineHandle(lineUrl);
 
@@ -71,18 +71,28 @@ export default function Courses({ lineUrl, courses }: { lineUrl: string; courses
         ))}
       </div>
 
-      <div className="rounded-2xl border border-brand-pink/40 bg-gradient-to-r from-brand-pink/20 via-brand-card to-brand-black p-6 text-center">
-        <h3 className="mb-1 font-kanit text-base font-bold text-white sm:text-lg">ต้องการปรึกษาเคสส่วนตัวกับอาจารย์ขวัญ?</h3>
-        <p className="mb-4 text-xs font-light text-gray-300">วิเคราะห์ปัญหาความสัมพันธ์รายบุคคล วางแผนอย่างเป็นระบบ</p>
-        <a
-          href={lineUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="gradient-pink-btn inline-flex items-center justify-center space-x-2 rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-lg sm:text-sm"
-        >
-          <MessageCircle className="h-4 w-4" />
-          <span>แอด LINE ปรึกษาอาจารย์ขวัญ{handle ? ` (${handle})` : ""}</span>
-        </a>
+      <div className="rounded-2xl border border-brand-pink/40 bg-gradient-to-r from-brand-pink/20 via-brand-card to-brand-black p-6">
+        <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
+          <div className="flex-1">
+            <h3 className="mb-1 font-kanit text-base font-bold text-white sm:text-lg">ต้องการปรึกษาเคสส่วนตัวกับอาจารย์ขวัญ?</h3>
+            <p className="mb-4 text-xs font-light text-gray-300">วิเคราะห์ปัญหาความสัมพันธ์รายบุคคล วางแผนอย่างเป็นระบบ</p>
+            <a
+              href={lineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="gradient-pink-btn inline-flex items-center justify-center space-x-2 rounded-xl px-6 py-2.5 text-xs font-bold text-white shadow-lg sm:text-sm"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span>แอด LINE ปรึกษาอาจารย์ขวัญ{handle ? ` (${handle})` : ""}</span>
+            </a>
+          </div>
+          {qr && (
+            <figure className="shrink-0 text-center">
+              <div className="mx-auto w-40 overflow-hidden rounded-xl border border-white/10 bg-white p-1 shadow-lg sm:w-44">{qr}</div>
+              <figcaption className="mt-2 text-[11px] font-light text-gray-300">สแกน QR Code เพื่อแอด LINE</figcaption>
+            </figure>
+          )}
+        </div>
       </div>
 
       {/* Portal: the card's backdrop-filter would otherwise trap position: fixed inside the card. */}
