@@ -41,8 +41,8 @@ export default async function EditCoursePage({
   return (
     <div className="space-y-4">
       <div>
-        <Link href="/backoffice/settings" className="text-xs text-gray-400 hover:text-white">
-          ← กลับไปหน้าตั้งค่า
+        <Link href="/backoffice/settings/courses" className="text-xs text-gray-400 hover:text-white">
+          ← กลับไปรายการคอร์ส
         </Link>
         <h1 className="mt-2 font-kanit text-2xl font-bold text-white">แก้ไขข้อมูลคอร์ส: {course.title}</h1>
         <p className="text-xs font-light text-gray-400">

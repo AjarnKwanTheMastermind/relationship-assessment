@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { DEFAULT_LINE_URL, lineUrlErrors, type LineUrlError } from "@/lib/lineLink";
 import MailNotice from "@/components/MailNotice";
 import LineUrlInput from "@/components/LineUrlInput";
 import LockNotice from "@/components/LockNotice";
 import ScrollToTop from "@/components/ScrollToTop";
+import TwoFactorStatus from "@/components/TwoFactorStatus";
 import { getPasswordLock } from "@/lib/db";
 import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
-import { adminEmail, deliveryMode, maskEmail } from "@/lib/notify";
 import { otpErrors } from "@/lib/otpErrors";
 import { readSettingsNow } from "@/lib/settings";
 import { twoFactorOn } from "@/lib/twoFactor";
@@ -27,10 +26,8 @@ export default async function SettingsPage({
 }: {
   searchParams: { saved?: string; error?: string; value?: string; mail?: string; left?: string; until?: string };
 }) {
-  const { settings, courseUpdatedAt } = await readSettingsNow();
+  const { settings } = await readSettingsNow();
   const twoFactor = twoFactorOn();
-  const email = adminEmail();
-  const canSendCode = Boolean(email) && deliveryMode() !== "unavailable";
   // While saving is locked after too many wrong passwords, say so before anyone tries.
   const lockedUntil = twoFactor ? null : await getPasswordLock();
 
@@ -54,8 +51,8 @@ export default async function SettingsPage({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="font-kanit text-2xl font-bold text-white">ตั้งค่าระบบ</h1>
-        <p className="text-xs font-light text-gray-400">แก้ไขข้อมูลที่แสดงบนหน้าเว็บ ค่าที่บันทึกจะมีผลกับทุกหน้า</p>
+        <h1 className="font-kanit text-2xl font-bold text-white">ติดต่อ</h1>
+        <p className="text-xs font-light text-gray-400">แก้ไขช่องทางติดต่อที่แสดงบนหน้าเว็บ เช่น LINE Official Account ค่าที่บันทึกจะมีผลกับทุกหน้า</p>
       </div>
 
       {saved && (
@@ -133,50 +130,7 @@ export default async function SettingsPage({
         </div>
       </form>
 
-      <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">
-        <h2 className="mb-1 text-sm font-medium text-white">ข้อมูลคอร์ส</h2>
-        <p className="mb-3 font-light text-gray-400">แก้ไขชื่อ ราคา และรายละเอียดของแต่ละคอร์สที่แสดงในหน้าผลลัพธ์</p>
-        <ul className="space-y-2">
-          {settings.courses.map((course) => (
-            <li key={course.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-border px-3 py-2">
-              <span>
-                <span className="text-white">{course.title}</span>{" "}
-                <span className="text-gray-500">
-                  {courseUpdatedAt[course.key]
-                    ? `· บันทึกล่าสุด ${courseUpdatedAt[course.key]?.toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}`
-                    : "· ยังไม่มีในฐานข้อมูล (ใช้ข้อมูลเริ่มต้น)"}
-                </span>
-              </span>
-              <Link
-                href={`/backoffice/settings/courses/${course.key}`}
-                className="rounded-xl border border-brand-border px-4 py-1 text-gray-300 hover:border-brand-pink hover:text-white"
-              >
-                แก้ไข
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="glass-card rounded-2xl p-4 text-xs text-gray-300 sm:p-5">
-        <h2 className="mb-1 text-sm font-medium text-white">
-          การยืนยันตัวตนสองขั้นตอน (2FA){" "}
-          <span className={twoFactor ? "text-emerald-300" : "text-gray-400"}>{twoFactor ? "· เปิดใช้งาน" : "· ปิดใช้งาน"}</span>
-        </h2>
-        <p className="font-light text-gray-400">
-          {twoFactor
-            ? `ทุกครั้งที่บันทึก ระบบจะส่งรหัส OTP 6 หลักไปที่อีเมลผู้ดูแล${email ? ` (${maskEmail(email)})` : ""} และการตั้งค่าจะเปลี่ยนเมื่อกรอกรหัสถูกต้องเท่านั้น`
-            : "ทุกครั้งที่บันทึก ต้องกรอกรหัสผ่านผู้ดูแลอีกครั้ง"}
-        </p>
-        <p className="mt-2 font-light text-gray-500">
-          เปิดหรือปิดได้ที่ตัวแปร TWO_FACTOR_AUTHEN ใน Netlify (ตั้งค่าเป็น on เพื่อเปิด หรือลบตัวแปรเพื่อปิด) แล้ว Deploy ใหม่ ไม่สามารถเปลี่ยนจากหน้านี้ได้
-        </p>
-        {twoFactor && !canSendCode && (
-          <p role="alert" className="mt-3 rounded-xl border border-red-500/40 bg-red-950/20 p-3 text-red-300">
-            เปิด 2FA อยู่ แต่ยังตั้งค่า ADMIN_EMAIL, RESEND_API_KEY หรือ EMAIL_FROM ไม่ครบ จึงบันทึกการตั้งค่าไม่ได้จนกว่าจะตั้งค่าครบ หรือลบตัวแปร TWO_FACTOR_AUTHEN แล้ว Deploy ใหม่
-          </p>
-        )}
-      </section>
+      <TwoFactorStatus />
     </div>
   );
 }
