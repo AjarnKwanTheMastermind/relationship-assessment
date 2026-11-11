@@ -31,6 +31,39 @@ body {
   transform: translateY(-2px);
 }
 
+/* Pressed feedback: every button, and every link drawn as a button, shrinks a little and darkens while it is
+   pressed, so a click or tap is seen at once. Disabled buttons do nothing. Touch devices get it through :active
+   too, and the browser's own grey tap flash is switched off because this replaces it. */
+button:not(:disabled),
+a[class*="rounded-"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled):active,
+a[class*="rounded-"]:active {
+  transform: scale(0.95);
+  filter: brightness(0.8);
+  transition: transform 0.08s ease-out, filter 0.08s ease-out, box-shadow 0.08s ease-out;
+}
+
+.gradient-pink-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.95);
+  filter: brightness(0.85);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 8px rgba(255, 42, 133, 0.45);
+}
+
+/* Wide buttons (answer options, full-width buttons) move less, so they do not jump. */
+button[class~="w-full"]:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+.option-card:active:not(:disabled) {
+  transform: translateX(2px) scale(0.985);
+  border-color: #ff2a85;
+  background-color: rgba(255, 42, 133, 0.2);
+}
+
 .glass-card {
   background: rgba(18, 18, 26, 0.88);
   backdrop-filter: blur(16px);
@@ -81,5 +114,14 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bg-pulse {
     animation: none;
+  }
+
+  /* No movement for people who asked for less motion; the darkening still shows the press. */
+  button:not(:disabled):active,
+  a[class*="rounded-"]:active,
+  .gradient-pink-btn:active:not(:disabled),
+  button[class~="w-full"]:not(:disabled):active,
+  .option-card:active:not(:disabled) {
+    transform: none;
   }
 }
