@@ -38,7 +38,7 @@ export default async function VerifyPage({
       <div className="space-y-4">
         <h1 className="font-kanit text-2xl font-bold text-white">ยืนยันรหัส OTP</h1>
         <ScrollToTop key={Date.now()} />
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+        <p role="alert" className="error-box">
           {problem} การตั้งค่ายังไม่เปลี่ยน กรุณาเริ่มต้นใหม่จากหน้าตั้งค่า
         </p>
         <Link href="/backoffice/settings" className="gradient-pink-btn inline-block rounded-xl px-5 py-2 text-xs font-semibold text-white">
@@ -85,7 +85,7 @@ export default async function VerifyPage({
       {error && (
         <>
           <ScrollToTop key={Date.now()} />
-          <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+          <p role="alert" className="error-box">
             {error}
           </p>
         </>

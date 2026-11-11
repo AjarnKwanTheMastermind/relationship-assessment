@@ -3,10 +3,11 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { courseToValues, type CourseValues } from "./courseEdit";
 import { courses } from "./courses";
-import { deleteSetting, upsertSetting } from "./db";
+import { deleteSetting, getLatestQuestionSet, insertQuestionSet, upsertSetting } from "./db";
 import { DEFAULT_LINE_URL } from "./lineLink";
 import { diffCourse, notifySettingsChanged, type Change, type MailStatus } from "./notify";
 import type { PendingChange } from "./pending";
+import { diffQuestionSets, sameSet } from "./questionSet";
 import { LINE_URL_KEY, SETTINGS_TAG, courseKey, readSettingsNow } from "./settings";
 
 function builtInValues(key: string): CourseValues {
@@ -21,6 +22,16 @@ export async function describeChange(change: PendingChange): Promise<{ subject: 
     current = await readSettingsNow();
   } catch {
     // The description is only informative, so an unreadable database must not stop it.
+  }
+
+  if (change.type === "questions") {
+    let latest: Awaited<ReturnType<typeof getLatestQuestionSet>> = null;
+    try {
+      latest = await getLatestQuestionSet();
+    } catch {
+      // The description is only informative, so an unreadable database must not stop it.
+    }
+    return { subject: "ชุดคำถามและคำตอบของแบบประเมิน", changes: diffQuestionSets(latest?.content ?? null, change.content) };
   }
 
   if (change.type === "line") {
@@ -41,8 +52,30 @@ export async function describeChange(change: PendingChange): Promise<{ subject: 
   };
 }
 
-export async function applyChange(change: PendingChange): Promise<{ saved: "1" | "reset"; mail: MailStatus }> {
+export async function applyChange(change: PendingChange): Promise<{ saved: "1" | "reset" | "unchanged"; mail: MailStatus }> {
   const { subject, changes } = await describeChange(change);
+
+  // Questions are never overwritten: every save is a new version, and identical content saves nothing.
+  if (change.type === "questions") {
+    const latest = await getLatestQuestionSet();
+    if (latest && sameSet(latest.content, change.content)) {
+      return { saved: "unchanged", mail: "off" };
+    }
+    const version = await insertQuestionSet(change.content, change.note);
+    revalidateTag(SETTINGS_TAG);
+    revalidatePath("/", "layout");
+    const mail = await notifySettingsChanged({
+      subject,
+      action: "save",
+      changes: [
+        { label: "เวอร์ชันของชุดคำถาม", before: latest ? String(latest.version) : "(ไม่มี)", after: String(version) },
+        ...(change.note ? [{ label: "หมายเหตุการแก้ไข", before: "(ว่าง)", after: change.note }] : []),
+        ...changes,
+      ],
+    });
+    return { saved: "1", mail };
+  }
+
   const reset = change.type === "line" ? change.value === null : change.values === null;
 
   if (change.type === "line") {

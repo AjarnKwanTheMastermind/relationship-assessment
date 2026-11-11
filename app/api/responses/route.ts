@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { countRecentResponses, insertResponse } from "@/lib/db";
+import { countRecentResponses, getQuestionSetVersion, insertResponse } from "@/lib/db";
 import { envInt } from "@/lib/envNumber";
 import { isValidAnswers, scoreAnswers } from "@/lib/quiz";
 import { clientKey, withinLimit } from "@/lib/rateLimit";
@@ -44,13 +44,22 @@ export async function POST(req: Request) {
   const text = await readLimited(req);
   if (text === null) return NextResponse.json({ error: "Request too large" }, { status: 413 });
 
-  let body: { answers?: unknown } | null = null;
+  let body: { answers?: unknown; version?: unknown } | null = null;
   try {
     body = JSON.parse(text);
   } catch {
     body = null;
   }
-  if (!isValidAnswers(body?.answers)) {
+  // The version is the question set the visitor was shown. A page built before versions existed sends none, and
+  // those pages only ever showed the built-in questions, which are version 1.
+  const version = body?.version === undefined ? 1 : body.version;
+  if (typeof version !== "number" || !Number.isInteger(version) || version < 1) {
+    return NextResponse.json({ error: "Invalid version" }, { status: 400 });
+  }
+  const set = await getQuestionSetVersion(version);
+  if (!set) return NextResponse.json({ error: "Unknown version" }, { status: 400 });
+
+  if (!isValidAnswers(body?.answers, set.content.questions.length)) {
     return NextResponse.json({ error: "Invalid answers" }, { status: 400 });
   }
 
@@ -61,6 +70,6 @@ export async function POST(req: Request) {
   }
 
   // Scored here rather than trusting the browser, so stored results are consistent.
-  const id = await insertResponse(body.answers, scoreAnswers(body.answers));
+  const id = await insertResponse(body.answers, scoreAnswers(body.answers, set.content), version);
   return NextResponse.json({ id }, { status: 201 });
 }

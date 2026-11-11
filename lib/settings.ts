@@ -1,5 +1,7 @@
 import { unstable_cache } from "next/cache";
-import { getSettingRows, type SettingRow } from "./db";
+import { builtInQuestions, type Question } from "./builtInQuestions";
+import { getLatestQuestionSet, getSettingRows, type SettingRow } from "./db";
+import { publicQuestions } from "./questionSet";
 import { asValues, validateCourse } from "./courseEdit";
 import { courses as defaultCourses, type Course } from "./courses";
 import { DEFAULT_LINE_URL, validateLineUrl } from "./lineLink";
@@ -37,6 +39,30 @@ const cachedSettings = unstable_cache(async () => fromRows(await getSettingRows(
   tags: [SETTINGS_TAG],
   revalidate: 300,
 });
+
+// The questions the quiz shows: the newest saved version, texts only (the scores stay on the server). It is cached
+// with the same tag as the other settings, so saving a new version clears it at once.
+export type PublicQuestionSet = { version: number; questions: Question[] };
+
+const cachedQuestionSet = unstable_cache(
+  async (): Promise<PublicQuestionSet | null> => {
+    const latest = await getLatestQuestionSet();
+    return latest ? { version: latest.version, questions: publicQuestions(latest.content) } : null;
+  },
+  ["question-set"],
+  { tags: [SETTINGS_TAG], revalidate: 300 },
+);
+
+// Never throws: if no valid set can be read, the quiz shows the built-in questions, which are version 1.
+export async function getPublicQuestionSet(): Promise<PublicQuestionSet> {
+  try {
+    const found = await cachedQuestionSet();
+    if (found) return found;
+  } catch (error) {
+    console.error("Could not read the question set, using the built-in questions", error);
+  }
+  return { version: 1, questions: builtInQuestions };
+}
 
 // Never throws: if the database can't be read, pages show the defaults instead of failing.
 export async function getSettings(): Promise<AppSettings> {

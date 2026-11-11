@@ -43,7 +43,7 @@ export type CourseResult = { ok: true; value: CourseContent } | { ok: false; err
 // Control characters and text-direction overrides are dropped; Thai and every other script pass through.
 const UNSAFE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f‪-‮⁦-⁩]/g;
 const clean = (text: string) => text.replace(UNSAFE, "");
-const oneLine = (text: string) => clean(text).replace(/\s+/g, " ").trim();
+export const oneLine = (text: string) => clean(text).replace(/\s+/g, " ").trim();
 
 export function courseToValues(course: CourseContent): CourseValues {
   return {

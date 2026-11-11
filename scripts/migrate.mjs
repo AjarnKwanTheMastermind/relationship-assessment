@@ -21,6 +21,7 @@ async function importTs(path) {
 const sql = await readFile(new URL("../db/schema.sql", import.meta.url), "utf8");
 const { courses } = await importTs("../lib/courses.ts");
 const { courseToValues, validateCourse } = await importTs("../lib/courseEdit.ts");
+const { builtInQuestions, CATEGORY_TITLES, CATEGORY_NAMES } = await importTs("../lib/builtInQuestions.ts");
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -40,7 +41,37 @@ try {
     );
     added += result.rowCount;
   }
-  console.log(`Schema is up to date. Courses added to the database: ${added} of ${courses.length}.`);
+  // Version 1 of the question set is the built-in questions: the answers run from worst to best, so the position is
+  // also the score (0, 1, 2). ON CONFLICT DO NOTHING means a deploy never touches a version that exists.
+  const version1 = {
+    categories: [1, 2, 3].map((n) => ({ title: CATEGORY_TITLES[n], name: CATEGORY_NAMES[n] })),
+    questions: builtInQuestions.map((q) => ({
+      id: q.id,
+      category: q.category,
+      question: q.question,
+      options: q.options.map((text, score) => ({ text, score })),
+    })),
+  };
+  const seeded = await client.query(
+    "INSERT INTO question_sets (version, note, content) VALUES (1, $1, $2::jsonb) ON CONFLICT (version) DO NOTHING",
+    ["ชุดคำถามเริ่มต้น", JSON.stringify(version1)],
+  );
+
+  // Responses saved before versions existed were answered against the built-in questions, which are version 1.
+  const stamped = await client.query("UPDATE responses SET question_set_version = 1 WHERE question_set_version IS NULL");
+  await client.query(`DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'responses_question_set_version_fkey') THEN
+      ALTER TABLE responses ADD CONSTRAINT responses_question_set_version_fkey
+        FOREIGN KEY (question_set_version) REFERENCES question_sets (version);
+    END IF;
+  END $$`);
+  await client.query("ALTER TABLE responses ALTER COLUMN question_set_version SET DEFAULT 1");
+  await client.query("ALTER TABLE responses ALTER COLUMN question_set_version SET NOT NULL");
+
+  console.log(
+    `Schema is up to date. Courses added to the database: ${added} of ${courses.length}. ` +
+      `Question set version 1 added: ${seeded.rowCount === 1 ? "yes" : "no (already there)"}. Responses given version 1: ${stamped.rowCount}.`,
+  );
 } finally {
   await client.end();
 }

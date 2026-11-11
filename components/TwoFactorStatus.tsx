@@ -23,7 +23,7 @@ export default function TwoFactorStatus() {
         เปิดหรือปิดได้ที่ตัวแปร TWO_FACTOR_AUTHEN ใน Netlify (ตั้งค่าเป็น on เพื่อเปิด หรือลบตัวแปรเพื่อปิด) แล้ว Deploy ใหม่ ไม่สามารถเปลี่ยนจากหน้านี้ได้
       </p>
       {twoFactor && !canSendCode && (
-        <p role="alert" className="mt-3 rounded-xl border border-red-500/40 bg-red-950/20 p-3 text-red-300">
+        <p role="alert" className="error-box mt-3">
           เปิด 2FA อยู่ แต่ยังตั้งค่า ADMIN_EMAIL, RESEND_API_KEY หรือ EMAIL_FROM ไม่ครบ จึงบันทึกการตั้งค่าไม่ได้จนกว่าจะตั้งค่าครบ หรือลบตัวแปร TWO_FACTOR_AUTHEN แล้ว Deploy ใหม่
         </p>
       )}

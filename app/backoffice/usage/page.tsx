@@ -77,7 +77,7 @@ export default async function UsagePage({
       {error ? (
         <>
           <ScrollToTop key={Date.now()} />
-          <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+          <p role="alert" className="error-box">
             {error}
           </p>
         </>

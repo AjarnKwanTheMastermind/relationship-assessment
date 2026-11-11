@@ -1,22 +1,28 @@
 import QuestionStatsHeader from "@/components/QuestionStatsHeader";
 import { parsePeriod } from "@/lib/dateRange";
-import { getAnswerCounts } from "@/lib/db";
-import { buildQuestionStats, formatPercent, optionColors } from "@/lib/stats";
+import { getAnswerCounts, getQuestionSetVersion, listQuestionSets } from "@/lib/db";
+import { buildQuestionStats, parseVersion, formatPercent, optionColors } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportPage({
   searchParams,
 }: {
-  searchParams: { period?: string | string[]; from?: string | string[]; to?: string | string[] };
+  searchParams: { period?: string | string[]; from?: string | string[]; to?: string | string[]; version?: string | string[] };
 }) {
   const period = parsePeriod(searchParams.period, searchParams.from, searchParams.to);
+  // The statistics are about one version of the questions (the newest unless the address says another), because a
+  // position means a different answer in another version.
+  const versions = await listQuestionSets();
+  const version = parseVersion(searchParams.version, versions.map((v) => v.version));
+  const set = await getQuestionSetVersion(version);
   // With a mistake in the dates nothing is counted, and the form explains the mistake.
-  const stats = buildQuestionStats(period.error ? [] : await getAnswerCounts(period.mode === "range" ? period : undefined));
+  const counts = period.error || !set ? [] : await getAnswerCounts(period.mode === "range" ? period : undefined, version);
+  const stats = set ? buildQuestionStats(counts, set.content) : [];
 
   return (
     <div className="space-y-4">
-      <QuestionStatsHeader active="numbers" period={period} />
+      <QuestionStatsHeader active="numbers" period={period} versions={versions} version={version} />
 
       {!period.error && stats.map((q) => (
         <section key={q.id} className="glass-card overflow-x-auto rounded-2xl p-4 sm:p-5">
@@ -37,7 +43,7 @@ export default async function ReportPage({
                     <span
                       aria-hidden
                       className="mr-2 inline-block h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: optionColors[o.index] }}
+                      style={{ backgroundColor: optionColors[o.score] }}
                     />
                     {o.text}
                   </td>

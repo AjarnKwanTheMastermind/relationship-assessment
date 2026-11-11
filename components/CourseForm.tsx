@@ -78,22 +78,22 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
       <input type="hidden" name="key" value={courseKey} />
 
       {message === "form" && (
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+        <p role="alert" className="error-box">
           ไม่พบคอร์สนี้
         </p>
       )}
       {message === "password" && (
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+        <p role="alert" className="error-box">
           {wrongPasswordMessage(state.left)}
         </p>
       )}
       {message && message !== "password" && message !== "form" && (
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+        <p role="alert" className="error-box">
           {message === "locked" ? lockedMessage(state.until) : otpErrors[message]}
         </p>
       )}
       {Object.keys(errors).length > 0 && (
-        <p role="alert" className="rounded-2xl border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-300">
+        <p role="alert" className="error-box">
           บันทึกไม่ได้ กรุณาแก้ไขช่องที่มีข้อความสีแดง
         </p>
       )}
@@ -117,7 +117,7 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
               {rule.required && <span className="ml-1 text-brand-pink">*</span>}
             </label>
             {rows ? <textarea {...common} rows={rows} /> : <input {...common} type="text" />}
-            <p id={`${id}-help`} className={`mt-1 text-[11px] ${error ? "text-red-300" : "font-light text-gray-500"}`}>
+            <p id={`${id}-help`} className={error ? "error-text" : "mt-1 text-[11px] font-light text-gray-500"}>
               {error ?? hint ?? `ไม่เกิน ${rule.max} ตัวอักษร`}
             </p>
           </div>

@@ -64,6 +64,90 @@ button[class~="w-full"]:not(:disabled):active {
   background-color: rgba(255, 42, 133, 0.2);
 }
 
+/* Error messages. A message after a failed submit (.error-box) is a strong red bar with an icon, and a message under
+   a field (.error-text) is bold with its own icon. A field with a problem (aria-invalid) gets a red border and
+   tint, so the eye finds the place to fix. Keep role="alert" on boxes so screen readers announce them. */
+.error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.9rem 1rem;
+  border: 2px solid #ef4444;
+  border-left-width: 8px;
+  border-radius: 1rem;
+  background: rgba(127, 29, 29, 0.6);
+  color: #fee2e2;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.5;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18), 0 10px 28px -10px rgba(239, 68, 68, 0.7);
+  animation: error-pop 0.35s ease-out;
+}
+
+.error-box::before {
+  content: "!";
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.error-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.error-text::before {
+  content: "!";
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.05rem;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: #ef4444;
+  background-color: rgba(127, 29, 29, 0.3);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes error-pop {
+  0% {
+    transform: scale(0.97);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.01);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .glass-card {
   background: rgba(18, 18, 26, 0.88);
   backdrop-filter: blur(16px);
@@ -113,6 +197,10 @@ button[class~="w-full"]:not(:disabled):active {
 
 @media (prefers-reduced-motion: reduce) {
   .bg-pulse {
+    animation: none;
+  }
+
+  .error-box {
     animation: none;
   }
 

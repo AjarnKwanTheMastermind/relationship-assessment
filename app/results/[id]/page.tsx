@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Compass, Lightbulb, LifeBuoy, Phone, RotateCw, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import Courses from "@/components/Courses";
 import LineQr from "@/components/LineQr";
-import { getAnswers } from "@/lib/db";
+import { getQuestionSetVersion, getResponseAnswers } from "@/lib/db";
 import { helplines } from "@/lib/helplines";
 import { getSettings } from "@/lib/settings";
 import { scoreAnswers, type Band, type CategoryStatus } from "@/lib/quiz";
@@ -38,10 +38,13 @@ const categoryIcons = { 1: ShieldCheck, 2: Compass, 3: SlidersHorizontal };
 
 export default async function ResultsPage({ params }: { params: { id: string } }) {
   if (!UUID.test(params.id)) notFound();
-  const answers = await getAnswers(params.id);
-  if (!answers) notFound();
+  const stored = await getResponseAnswers(params.id);
+  if (!stored) notFound();
+  // Scored with the set the visitor answered, so a later edit of the questions never changes an old result.
+  const set = await getQuestionSetVersion(stored.version);
+  if (!set) notFound();
 
-  const result = scoreAnswers(answers);
+  const result = scoreAnswers(stored.answers, set.content);
   const band = bandStyles[result.band];
   // Courses are never shown to someone flagged for safety, so their settings aren't even read.
   const settings = result.safetyFlag ? null : await getSettings();

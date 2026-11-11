@@ -1,6 +1,8 @@
 import Link from "next/link";
 import PeriodFilter from "@/components/PeriodFilter";
-import { periodQuery, type Period } from "@/lib/dateRange";
+import type { Period } from "@/lib/dateRange";
+import type { QuestionSetSummary } from "@/lib/db";
+import { statsQuery } from "@/lib/stats";
 
 // The heading, sub menu and period choice shared by the two views of the per-question statistics.
 // A link is used for each view, so the choice is part of the address and no script is needed.
@@ -12,9 +14,28 @@ const views = [
 
 export type QuestionStatsView = (typeof views)[number]["id"];
 
-export default function QuestionStatsHeader({ active, period }: { active: QuestionStatsView; period: Period }) {
+const bangkokDate = (date: Date) => date.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric" });
+
+export default function QuestionStatsHeader({
+  active,
+  period,
+  versions,
+  version,
+}: {
+  active: QuestionStatsView;
+  period: Period;
+  // Every version of the questions (newest first) and the one the numbers are about.
+  versions: QuestionSetSummary[];
+  version: number;
+}) {
   const current = views.find((view) => view.id === active)!;
-  const query = periodQuery(period);
+  const latest = versions[0].version;
+  const query = statsQuery(period, version, latest);
+  const chosen = versions.find((v) => v.version === version) ?? versions[0];
+  const options = versions.map((v) => ({
+    version: v.version,
+    label: `เวอร์ชัน ${v.version}${v.version === latest ? " (ล่าสุด)" : ""} · ${bangkokDate(v.createdAt)} · ${v.responses.toLocaleString("en-US")} คำตอบ`,
+  }));
 
   return (
     <div className="space-y-3">
@@ -45,7 +66,16 @@ export default function QuestionStatsHeader({ active, period }: { active: Questi
         ))}
       </nav>
 
-      <PeriodFilter action={current.href} mode={period.mode} from={period.from} to={period.to} error={period.error} />
+      <PeriodFilter action={current.href} mode={period.mode} from={period.from} to={period.to} error={period.error} versions={options} version={version} />
+
+      <p className="text-xs text-gray-400">
+        ชุดคำถาม:{" "}
+        <span className="text-gray-200">
+          เวอร์ชัน {chosen.version}
+          {chosen.version === latest ? " (ล่าสุด)" : ""} บันทึกเมื่อ {bangkokDate(chosen.createdAt)}
+          {chosen.note ? ` · ${chosen.note}` : ""}
+        </span>
+      </p>
 
       {!period.error && (
         <p className="text-xs text-gray-400">

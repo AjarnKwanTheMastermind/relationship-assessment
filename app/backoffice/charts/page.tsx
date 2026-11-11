@@ -1,23 +1,29 @@
 import PieChart from "@/components/PieChart";
 import QuestionStatsHeader from "@/components/QuestionStatsHeader";
 import { parsePeriod } from "@/lib/dateRange";
-import { getAnswerCounts } from "@/lib/db";
-import { buildQuestionStats, formatPercent, optionColors, optionLevels } from "@/lib/stats";
+import { getAnswerCounts, getQuestionSetVersion, listQuestionSets } from "@/lib/db";
+import { buildQuestionStats, parseVersion, formatPercent, optionColors, optionLevels } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChartsPage({
   searchParams,
 }: {
-  searchParams: { period?: string | string[]; from?: string | string[]; to?: string | string[] };
+  searchParams: { period?: string | string[]; from?: string | string[]; to?: string | string[]; version?: string | string[] };
 }) {
   const period = parsePeriod(searchParams.period, searchParams.from, searchParams.to);
+  // The statistics are about one version of the questions (the newest unless the address says another), because a
+  // position means a different answer in another version.
+  const versions = await listQuestionSets();
+  const version = parseVersion(searchParams.version, versions.map((v) => v.version));
+  const set = await getQuestionSetVersion(version);
   // With a mistake in the dates nothing is counted, and the form explains the mistake.
-  const stats = buildQuestionStats(period.error ? [] : await getAnswerCounts(period.mode === "range" ? period : undefined));
+  const counts = period.error || !set ? [] : await getAnswerCounts(period.mode === "range" ? period : undefined, version);
+  const stats = set ? buildQuestionStats(counts, set.content) : [];
 
   return (
     <div className="space-y-4">
-      <QuestionStatsHeader active="pie" period={period} />
+      <QuestionStatsHeader active="pie" period={period} versions={versions} version={version} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {!period.error && stats.map((q) => (
@@ -34,10 +40,10 @@ export default async function ChartsPage({
                       <span
                         aria-hidden
                         className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: optionColors[o.index] }}
+                        style={{ backgroundColor: optionColors[o.score] }}
                       />
                       <span className="flex-1 leading-relaxed">
-                        <span className="font-semibold text-white">{optionLevels[o.index]}:</span> {o.text}
+                        <span className="font-semibold text-white">{optionLevels[o.score]}:</span> {o.text}
                       </span>
                       <span className="shrink-0 text-right tabular-nums">
                         {formatPercent(o.percent)} ({o.picks.toLocaleString("en-US")})

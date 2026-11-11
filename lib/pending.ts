@@ -3,10 +3,12 @@
 import { asValues, courseToValues, validateCourse, type CourseValues } from "./courseEdit";
 import { courses } from "./courses";
 import { validateLineUrl } from "./lineLink";
+import { validateNote, validateQuestionSet, type QuestionSetContent } from "./questionSet";
 
 export type PendingChange =
   | { type: "line"; value: string | null } // null puts the default link back
-  | { type: "course"; key: string; values: CourseValues | null }; // null puts the built-in text back
+  | { type: "course"; key: string; values: CourseValues | null } // null puts the built-in text back
+  | { type: "questions"; content: QuestionSetContent; note: string }; // saved as a new version of the question set
 
 export function parsePending(json: string): PendingChange | null {
   try {
@@ -23,6 +25,11 @@ export function parsePending(json: string): PendingChange | null {
       const result = validateCourse(asValues(raw.values));
       return result.ok ? { type: "course", key, values: courseToValues(result.value) } : null;
     }
+    if (raw.type === "questions") {
+      const set = validateQuestionSet(raw.content);
+      const note = validateNote(raw.note);
+      return set.ok && note.ok ? { type: "questions", content: set.value, note: note.value } : null;
+    }
   } catch {
     // falls through to refusal
   }
@@ -31,5 +38,6 @@ export function parsePending(json: string): PendingChange | null {
 
 // Where the administrator lands after the change is applied.
 export function returnPath(change: PendingChange): string {
+  if (change.type === "questions") return "/backoffice/settings/questions";
   return change.type === "course" ? `/backoffice/settings/courses/${change.key}` : "/backoffice/settings";
 }

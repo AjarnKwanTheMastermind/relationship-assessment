@@ -34,7 +34,7 @@ export default function PieChart({ options, label }: { options: OptionStat[]; la
         // An arc cannot start and end on the same point, so a 100% answer is a circle.
         if (o.percent === 100) {
           return (
-            <circle key={o.index} cx={CENTER} cy={CENTER} r={RADIUS} fill={optionColors[o.index]}>
+            <circle key={o.index} cx={CENTER} cy={CENTER} r={RADIUS} fill={optionColors[o.score]}>
               {title}
             </circle>
           );
@@ -43,7 +43,7 @@ export default function PieChart({ options, label }: { options: OptionStat[]; la
           <path
             key={o.index}
             d={slicePath(start, cumulative)}
-            fill={optionColors[o.index]}
+            fill={optionColors[o.score]}
             stroke={SURFACE}
             strokeWidth="2"
             strokeLinejoin="round"

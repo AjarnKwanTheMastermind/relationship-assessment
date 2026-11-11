@@ -14,17 +14,33 @@ export default function PeriodFilter({
   from,
   to,
   error,
+  versions,
+  version,
 }: {
   action: string;
   mode: "all" | "range";
   from: string;
   to: string;
   error: string | null;
+  // The versions of the questions that can be shown, and the one chosen.
+  versions: { version: number; label: string }[];
+  version: number;
 }) {
   const [selected, setSelected] = useState(mode);
 
   return (
     <form method="get" action={action} className="glass-card space-y-3 rounded-2xl p-4">
+      <label className="block text-xs text-gray-300">
+        <span className="mb-1 block font-medium text-white">ชุดคำถามและคำตอบ (เวอร์ชัน)</span>
+        <select name="version" defaultValue={version} className={`${inputClass} max-w-full`}>
+          {versions.map((v) => (
+            <option key={v.version} value={v.version}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <fieldset className="space-y-3">
         <legend className="mb-2 text-xs font-medium text-white">ช่วงเวลาของข้อมูล</legend>
         <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-200">
@@ -69,7 +85,7 @@ export default function PeriodFilter({
       {error && (
         <>
           <ScrollToTop />
-          <p role="alert" className="rounded-xl border border-red-500/40 bg-red-950/20 p-3 text-xs text-red-300">
+          <p role="alert" className="error-box">
             {error}
           </p>
         </>

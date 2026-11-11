@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ScrollToTop from "./ScrollToTop";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { questions } from "@/lib/quiz";
+import type { Question } from "@/lib/builtInQuestions";
 
-export default function Quiz() {
+// The questions come from the server as a prop: the version tells which saved set they are, and is sent back with the answers.
+export default function Quiz({ version, questions }: { version: number; questions: Question[] }) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
@@ -36,7 +37,7 @@ export default function Quiz() {
       const res = await fetch("/api/responses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ answers, version }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const { id } = await res.json();
@@ -54,7 +55,7 @@ export default function Quiz() {
         <>
           {/* At the top of the card, with the page scrolled up to it, so it is seen after pressing the last button. */}
           <ScrollToTop key={failures} />
-          <p role="alert" className="mb-4 rounded-xl border border-red-500/40 bg-red-950/20 p-3 text-sm text-red-300">
+          <p role="alert" className="error-box mb-4">
             ไม่สามารถส่งคำตอบได้ กรุณาลองใหม่อีกครั้ง
           </p>
         </>

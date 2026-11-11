@@ -51,3 +51,29 @@ CREATE TABLE IF NOT EXISTS login_failures (
   window_started_at timestamptz NOT NULL,
   locked_until      timestamptz
 );
+
+-- Every saved set of questions and answers is one version. A version is never changed or deleted, so the history
+-- stays for tracking: a new edit is a new row. The highest version is the one visitors see. content holds the ten
+-- questions with their answers and scores; note says why it was changed (may be empty).
+CREATE TABLE IF NOT EXISTS question_sets (
+  version    integer PRIMARY KEY CHECK (version > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  note       text NOT NULL DEFAULT '',
+  content    jsonb NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION question_sets_are_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'question_sets rows are never changed or deleted: save a new version instead';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS question_sets_immutable ON question_sets;
+CREATE TRIGGER question_sets_immutable BEFORE UPDATE OR DELETE ON question_sets
+  FOR EACH ROW EXECUTE FUNCTION question_sets_are_immutable();
+
+-- The version of the question set each response was answered against. scripts/migrate.mjs seeds version 1 (the
+-- built-in questions), gives older responses version 1, then makes this column required and points it at
+-- question_sets. The default of 1 is only a safety net for the build that is still running while a deploy migrates.
+ALTER TABLE responses ADD COLUMN IF NOT EXISTS question_set_version integer;
+CREATE INDEX IF NOT EXISTS responses_question_set_version_idx ON responses (question_set_version);

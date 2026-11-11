@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { parseStoredSet, type QuestionSetContent } from "./questionSet";
 import type { AuditResult } from "./quiz";
 
 // Reuse one pool across hot reloads in development.
@@ -20,11 +21,12 @@ function getPool(): Pool {
   return globalForPool.pgPool;
 }
 
-export async function insertResponse(answers: number[], result: AuditResult): Promise<string> {
+// The version is the question set the answers were given for, so the response can always be read against it.
+export async function insertResponse(answers: number[], result: AuditResult, questionSetVersion: number): Promise<string> {
   const { rows } = await getPool().query<{ id: string }>(
     `INSERT INTO responses
-       (answers, cat1_score, cat2_score, cat3_score, percent_score, band, safety_flag)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (answers, cat1_score, cat2_score, cat3_score, percent_score, band, safety_flag, question_set_version)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id`,
     [
       answers,
@@ -34,17 +36,19 @@ export async function insertResponse(answers: number[], result: AuditResult): Pr
       result.percentScore,
       result.band,
       result.safetyFlag,
+      questionSetVersion,
     ],
   );
   return rows[0].id;
 }
 
-export async function getAnswers(id: string): Promise<number[] | null> {
-  const { rows } = await getPool().query<{ answers: number[] }>(
-    "SELECT answers FROM responses WHERE id = $1",
+// The answers of one response and the version of the question set they were given for.
+export async function getResponseAnswers(id: string): Promise<{ answers: number[]; version: number } | null> {
+  const { rows } = await getPool().query<{ answers: number[]; version: number }>(
+    "SELECT answers, question_set_version AS version FROM responses WHERE id = $1",
     [id],
   );
-  return rows[0]?.answers ?? null;
+  return rows[0] ?? null;
 }
 
 export type AdminStats = {
@@ -72,24 +76,100 @@ export async function getAdminStats(): Promise<AdminStats> {
 export type AnswerCount = { question_no: number; option_index: number; picks: number };
 
 // One row per question and option picked. Expands the answers array by position. With a range
-// (YYYY-MM-DD, both ends included, Bangkok days) only responses from those days are counted.
-export async function getAnswerCounts(range?: { from: string; to: string }): Promise<AnswerCount[]> {
+// (YYYY-MM-DD, both ends included, Bangkok days) only responses from those days are counted, and with a version
+// only responses answered against that question set, because the same position can mean a different question
+// in another version.
+export async function getAnswerCounts(range?: { from: string; to: string }, version?: number): Promise<AnswerCount[]> {
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+  if (range) {
+    params.push(range.from, range.to);
+    conditions.push(
+      `r.created_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Bangkok')`,
+      `r.created_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Bangkok')`,
+    );
+  }
+  if (version !== undefined) {
+    params.push(version);
+    conditions.push(`r.question_set_version = $${params.length}`);
+  }
   const { rows } = await getPool().query<AnswerCount>(
     `SELECT a.question_no::int AS question_no,
             a.option_index::int AS option_index,
             count(*)::int AS picks
      FROM responses r
      CROSS JOIN LATERAL unnest(r.answers) WITH ORDINALITY AS a(option_index, question_no)
-     ${
-       range
-         ? `WHERE r.created_at >= ($1::date::timestamp AT TIME ZONE 'Asia/Bangkok')
-              AND r.created_at < (($2::date + 1)::timestamp AT TIME ZONE 'Asia/Bangkok')`
-         : ""
-     }
+     ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
      GROUP BY a.question_no, a.option_index`,
-    range ? [range.from, range.to] : [],
+    params,
   );
   return rows;
+}
+
+export type QuestionSetVersion = { version: number; createdAt: Date; note: string; content: QuestionSetContent };
+export type QuestionSetSummary = { version: number; createdAt: Date; note: string; responses: number };
+
+type QuestionSetRow = { version: number; created_at: Date; note: string; content: unknown };
+
+// A stored set is checked again here, so a damaged row is skipped instead of reaching the quiz.
+function toVersion(row: QuestionSetRow): QuestionSetVersion | null {
+  const content = parseStoredSet(row.content);
+  return content ? { version: row.version, createdAt: row.created_at, note: row.note, content } : null;
+}
+
+// The newest valid set: the one visitors see. Null only when no valid set exists at all.
+export async function getLatestQuestionSet(): Promise<QuestionSetVersion | null> {
+  const { rows } = await getPool().query<QuestionSetRow>(
+    "SELECT version, created_at, note, content FROM question_sets ORDER BY version DESC LIMIT 20",
+  );
+  for (const row of rows) {
+    const found = toVersion(row);
+    if (found) return found;
+  }
+  return null;
+}
+
+export async function getQuestionSetVersion(version: number): Promise<QuestionSetVersion | null> {
+  const { rows } = await getPool().query<QuestionSetRow>(
+    "SELECT version, created_at, note, content FROM question_sets WHERE version = $1",
+    [version],
+  );
+  return rows[0] ? toVersion(rows[0]) : null;
+}
+
+// Every version, newest first, with how many responses were answered against it.
+export async function listQuestionSets(): Promise<QuestionSetSummary[]> {
+  const { rows } = await getPool().query<{ version: number; created_at: Date; note: string; responses: number }>(
+    `SELECT s.version, s.created_at, s.note, count(r.id)::int AS responses
+     FROM question_sets s
+     LEFT JOIN responses r ON r.question_set_version = s.version
+     GROUP BY s.version, s.created_at, s.note
+     ORDER BY s.version DESC`,
+  );
+  return rows.map((r) => ({ version: r.version, createdAt: r.created_at, note: r.note, responses: r.responses }));
+}
+
+// Saves a new version. The number is taken inside a transaction that holds a lock, so two saves at the same time
+// cannot get the same number.
+export async function insertQuestionSet(content: QuestionSetContent, note: string): Promise<number> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(727003)");
+    const { rows } = await client.query<{ version: number }>(
+      `INSERT INTO question_sets (version, note, content)
+       VALUES ((SELECT COALESCE(MAX(version), 0) + 1 FROM question_sets), $1, $2::jsonb)
+       RETURNING version`,
+      [note, JSON.stringify(content)],
+    );
+    await client.query("COMMIT");
+    return rows[0].version;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export type SettingRow = { key: string; value: string; updated_at: Date };
