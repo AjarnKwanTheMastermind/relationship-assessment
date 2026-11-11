@@ -8,3 +8,5 @@ out
 next-env.d.ts
 *.tsbuildinfo
 .neon
+# Word's temporary lock files
+docs/~$*
