@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Kanit, Prompt } from "next/font/google";
 import { Crown, MessageCircle } from "lucide-react";
+import NavigationProgress from "@/components/NavigationProgress";
 import { lineLabel } from "@/lib/lineLink";
 import { getSettings } from "@/lib/settings";
 import "./globals.css";
@@ -33,6 +35,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="th" className={`${prompt.variable} ${kanit.variable}`}>
       <body className="relative flex min-h-screen flex-col justify-between font-prompt selection:bg-brand-pink selection:text-white">
         <div className="bg-pulse" />
+        {/* useSearchParams needs a Suspense boundary, or the static pages would turn dynamic. */}
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
 
         <header className="sticky top-0 z-10 border-b border-brand-border bg-brand-black/90 backdrop-blur-md">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from "react";
+import Spinner from "./Spinner";
 import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
 import { otpErrors } from "@/lib/otpErrors";
 import {
@@ -420,7 +421,14 @@ export default function QuestionsForm({
           disabled={pending || !ready}
           className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white disabled:opacity-60"
         >
-          {pending ? "กำลังบันทึก..." : "บันทึกเป็นเวอร์ชันใหม่"}
+          {pending ? (
+            <span className="inline-flex items-center gap-2">
+              <Spinner />
+              กำลังบันทึก...
+            </span>
+          ) : (
+            "บันทึกเป็นเวอร์ชันใหม่"
+          )}
         </button>
       </section>
     </form>

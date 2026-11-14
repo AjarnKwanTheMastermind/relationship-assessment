@@ -213,3 +213,91 @@ select[aria-invalid="true"] {
     transform: none;
   }
 }
+
+/* Loading feedback. A spinning ring for buttons and loading pages, a bar across the top while a page loads, and
+   grey shimmering blocks that stand in for content that is still on its way. */
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spinner-turn 0.7s linear infinite;
+}
+
+.spinner-lg {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-width: 3px;
+  border-color: rgba(255, 42, 133, 0.3);
+  border-top-color: #ff2a85;
+}
+
+@keyframes spinner-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff2a85, #ff7ab8);
+  box-shadow: 0 0 8px rgba(255, 42, 133, 0.7);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nav-progress-run {
+  opacity: 1;
+  animation: nav-progress-run 8s cubic-bezier(0.1, 0.6, 0.3, 1) forwards;
+}
+
+.nav-progress-done {
+  width: 100%;
+  opacity: 1;
+  animation: nav-progress-fade 0.4s ease 0.15s forwards;
+}
+
+@keyframes nav-progress-run {
+  from {
+    width: 0;
+  }
+  to {
+    width: 90%;
+  }
+}
+
+@keyframes nav-progress-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1f182b 25%, #2f2540 50%, #1f182b 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* People who asked their device for less motion get a still ring and still blocks. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+  .skeleton {
+    animation: none;
+  }
+}

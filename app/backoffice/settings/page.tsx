@@ -3,6 +3,7 @@ import MailNotice from "@/components/MailNotice";
 import LineUrlInput from "@/components/LineUrlInput";
 import LockNotice from "@/components/LockNotice";
 import ScrollToTop from "@/components/ScrollToTop";
+import SubmitButton from "@/components/SubmitButton";
 import TwoFactorStatus from "@/components/TwoFactorStatus";
 import { getPasswordLock } from "@/lib/db";
 import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
@@ -115,18 +116,18 @@ export default async function SettingsPage({
         )}
 
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white">
+          <SubmitButton pendingText="กำลังบันทึก..." className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white">
             บันทึก
-          </button>
-          <button
-            type="submit"
+          </SubmitButton>
+          <SubmitButton
             name="intent"
             value="reset"
             formNoValidate
+            pendingText="กำลังคืนค่า..."
             className="rounded-xl border border-brand-border px-5 py-2 text-xs text-gray-300 hover:border-brand-pink hover:text-white"
           >
             คืนค่าเริ่มต้น
-          </button>
+          </SubmitButton>
         </div>
       </form>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Spinner from "./Spinner";
 import { courseFields, fieldRules, validateCourse, type CourseField, type CourseValues } from "@/lib/courseEdit";
 import { lockedMessage, wrongPasswordMessage } from "@/lib/lockMessages";
 import { otpErrors } from "@/lib/otpErrors";
@@ -29,6 +30,8 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
   // A new key after every submit remounts the fields, so the password never stays in the box.
   const [round, setRound] = useState(0);
   const [pending, startTransition] = useTransition();
+  // Which button was pressed, so only that one shows the spinner.
+  const [pressed, setPressed] = useState<"save" | "reset">("save");
   // Until the page is ready the buttons stay off, so a form can never be sent the plain browser way.
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
@@ -39,6 +42,7 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
 
   function submit(formData: FormData, intent: string) {
     formData.set("intent", intent);
+    setPressed(intent === "reset" ? "reset" : "save");
 
     // The same rules as the server are checked here first, so a blank or too long field is shown at once
     // and nothing is sent. The server checks again, because a browser check can always be skipped.
@@ -149,7 +153,14 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
 
       <div className="flex flex-wrap gap-3">
         <button type="submit" value="save" disabled={pending || !ready} className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white disabled:opacity-60">
-          {pending ? "กำลังบันทึก..." : "บันทึก"}
+          {pending && pressed === "save" ? (
+            <span className="inline-flex items-center gap-2">
+              <Spinner />
+              กำลังบันทึก...
+            </span>
+          ) : (
+            "บันทึก"
+          )}
         </button>
         <button
           type="submit"
@@ -158,7 +169,14 @@ export default function CourseForm({ courseKey, initial, twoFactor }: { courseKe
           formNoValidate
           className="rounded-xl border border-brand-border px-5 py-2 text-xs text-gray-300 hover:border-brand-pink hover:text-white disabled:opacity-60"
         >
-          คืนค่าเริ่มต้น
+          {pending && pressed === "reset" ? (
+            <span className="inline-flex items-center gap-2">
+              <Spinner />
+              กำลังคืนค่า...
+            </span>
+          ) : (
+            "คืนค่าเริ่มต้น"
+          )}
         </button>
       </div>
     </form>

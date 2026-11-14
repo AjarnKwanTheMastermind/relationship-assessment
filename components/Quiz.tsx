@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ScrollToTop from "./ScrollToTop";
+import Spinner from "./Spinner";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Question } from "@/lib/builtInQuestions";
 
@@ -41,6 +42,8 @@ export default function Quiz({ version, questions }: { version: number; question
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const { id } = await res.json();
+      // Starts the bar across the top; the result page is read and scored while it runs.
+      window.dispatchEvent(new Event("nav-start"));
       router.push(`/results/${id}`);
     } catch {
       setError(true);
@@ -127,8 +130,9 @@ export default function Quiz({ version, questions }: { version: number; question
             disabled={selected === null || submitting}
             className="gradient-pink-btn flex items-center space-x-2 rounded-xl px-6 py-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
           >
+            {submitting && <Spinner />}
             <span>{submitting ? "กำลังประมวลผล..." : isLast ? "ดูผลการประเมิน" : "ข้อถัดไป"}</span>
-            <ChevronRight className="h-3.5 w-3.5" />
+            {!submitting && <ChevronRight className="h-3.5 w-3.5" />}
           </button>
         </div>
       </div>

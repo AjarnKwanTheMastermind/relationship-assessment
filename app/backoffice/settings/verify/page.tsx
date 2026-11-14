@@ -4,6 +4,7 @@ import { getChallenge } from "@/lib/db";
 import { adminEmail, maskEmail, show } from "@/lib/notify";
 import { isUuid, otpRules } from "@/lib/otp";
 import ScrollToTop from "@/components/ScrollToTop";
+import SubmitButton from "@/components/SubmitButton";
 import { otpErrors } from "@/lib/otpErrors";
 import { parsePending } from "@/lib/pending";
 import { cancelChange, resendCode, verifyCode } from "../actions";
@@ -131,23 +132,23 @@ export default async function VerifyPage({
             className={inputClass}
           />
         </div>
-        <button type="submit" className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white">
+        <SubmitButton pendingText="กำลังตรวจรหัส..." className="gradient-pink-btn rounded-xl px-5 py-2 text-xs font-semibold text-white">
           ยืนยัน
-        </button>
+        </SubmitButton>
       </form>
 
       <div className="flex flex-wrap gap-3">
         <form action={resendCode}>
           <input type="hidden" name="challenge" value={id} />
-          <button type="submit" className="rounded-xl border border-brand-border px-5 py-2 text-xs text-gray-300 hover:border-brand-pink hover:text-white">
+          <SubmitButton pendingText="กำลังส่งรหัส..." className="rounded-xl border border-brand-border px-5 py-2 text-xs text-gray-300 hover:border-brand-pink hover:text-white">
             ส่งรหัสใหม่
-          </button>
+          </SubmitButton>
         </form>
         <form action={cancelChange}>
           <input type="hidden" name="challenge" value={id} />
-          <button type="submit" className="rounded-xl border border-brand-border px-5 py-2 text-xs text-gray-300 hover:border-brand-pink hover:text-white">
+          <SubmitButton pendingText="กำลังยกเลิก..." className="rounded-xl border border-brand-border px-5 py-2 text-xs text-gray-300 hover:border-brand-pink hover:text-white">
             ยกเลิกการเปลี่ยนแปลง
-          </button>
+          </SubmitButton>
         </form>
       </div>
     </div>
