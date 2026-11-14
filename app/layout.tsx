@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Kanit, Prompt } from "next/font/google";
 import { Crown, MessageCircle } from "lucide-react";
 import NavigationProgress from "@/components/NavigationProgress";
+import { appVersionNumber } from "@/lib/appVersion";
 import { lineLabel } from "@/lib/lineLink";
 import { getSettings } from "@/lib/settings";
 import "./globals.css";
@@ -30,6 +31,7 @@ export const revalidate = 300;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { lineUrl } = await getSettings();
+  const version = appVersionNumber();
 
   return (
     <html lang="th" className={`${prompt.variable} ${kanit.variable}`}>
@@ -76,6 +78,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               แบบประเมินนี้ใช้เพื่อการวิเคราะห์เบื้องต้นด้วยหลักจิตวิทยาพฤติกรรมมนุษย์และการบริหารความสัมพันธ์เชิงยุทธศาสตร์
               ไม่ใช่การวินิจฉัยทางการแพทย์
             </p>
+            {/* The version number only: visitors never see the branch or the commit (those are in the backoffice). */}
+            {version && <p className="mt-1.5 text-[10px] font-light tracking-wide text-gray-600">{version}</p>}
           </div>
         </footer>
       </body>

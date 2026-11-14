@@ -1,4 +1,26 @@
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
+
+// The version shown at the bottom of the backoffice: the number in package.json, and the branch and commit this
+// build was made from. Netlify gives the branch and commit as BRANCH and COMMIT_REF while it builds; on a
+// developer's machine they come from git. Nothing here is secret, and a missing value is simply left out.
+function buildInfo() {
+  const git = (args) => {
+    try {
+      return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    } catch {
+      return "";
+    }
+  };
+  let version = "";
+  try {
+    version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version ?? "";
+  } catch {}
+  const commit = (process.env.COMMIT_REF || git("rev-parse HEAD")).slice(0, 7);
+  const branch = process.env.BRANCH || git("rev-parse --abbrev-ref HEAD");
+  return { APP_VERSION: version, APP_BRANCH: branch, APP_COMMIT: commit };
+}
 
 export default function config(phase) {
   const dev = phase === PHASE_DEVELOPMENT_SERVER;
@@ -32,6 +54,7 @@ export default function config(phase) {
   /** @type {import('next').NextConfig} */
   return {
     reactStrictMode: true,
+    env: buildInfo(),
     poweredByHeader: false,
     // The app shows no images, so the image optimizer (which has had security advisories) is switched off.
     images: { unoptimized: true },
