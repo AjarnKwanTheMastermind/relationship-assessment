@@ -10,3 +10,5 @@ next-env.d.ts
 .neon
 # Word's temporary lock files
 docs/~$*
+# Personal backups, not part of the project
+bak/
